@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>일일 현금흐름 추적</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            padding-top: 0;
+        }
+        
+        .mobile-container {
+            max-width: 480px;
+            margin: 0 auto;
+            background: #f8f9fa;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+         
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+        
+        .header-left h1 {
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
+        
+        .header-left p {
+            font-size: 11px;
+            opacity: 0.9;
+        }
+        
+        .header-date {
+            text-align: right;
+            font-size: 11px;
+            opacity: 0.9;
+        }
+        
+        .header-date .day {
+            font-size: 14px;
+            font-weight: 700;
+            display: block;
+            margin-bottom: 2px;
+        }
+        
+        .header-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+        }
+        
+        .header-stat {
+            text-align: center;
+        }
+        
+        .header-stat-label {
+            font-size: 10px;
+            opacity: 0.85;
+            margin-bottom: 3px;
+        }
+        
+        .header-stat-value {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        
+        .content {
+            padding: 12px;
+        }
+        
+        .alert-banner {
+            background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
+            border: 2px solid #ef4444;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        .alert-banner.warning {
+            background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
+            border-color: #f59e0b;
+        }
+        
+        .alert-banner.success {
+            background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+            border-color: #10b981;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .alert-banner .icon {
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+        
+        .alert-banner .title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #dc2626;
+            margin-bottom: 4px;
+        }
+        
+        .alert-banner.warning .title {
+            color: #d97706;
+        }
+        
+        .alert-banner.success .title {
+            color: #059669;
+        }
+        
+        .alert-banner .content {
+            font-size: 11px;
+            color: #991b1b;
+            line-height: 1.5;
+        }
+        
+        .alert-banner.warning .content {
+            color: #92400e;
+        }
+        
+        .alert-banner.success .content {
+            color: #166534;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .card-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .large-balance {
+            text-align: center;
+            padding: 16px;
+        }
+        
+        .large-balance-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 6px;
+        }
+        
+        .large-balance-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .large-balance-value.positive {
+            color: #10b981;
+        }
+        
+        .large-balance-value.negative {
+            color: #ef4444;
+        }
+        
+        .large-balance-detail {
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .daily-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        
+        .stat-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        
+        .stat-box-label {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        
+        .stat-box-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .stat-box-value.positive {
+            color: #10b981;
+        }
+        
+        .stat-box-value.negative {
+            color: #ef4444;
+        }
+        
+        .timeline-container {
+            background: white;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .timeline-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 24px;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e5e7eb;
+        }
+        
+        .timeline-item {
+            margin-bottom: 14px;
+            position: relative;
+        }
+        
+        .timeline-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            position: absolute;
+            left: -18px;
+            top: 3px;
+            border: 2px solid white;
+            z-index: 1;
+        }
+        
+        .timeline-item.income .timeline-dot {
+            background: #10b981;
+        }
+        
+        .timeline-item.expense .timeline-dot {
+            background: #ef4444;
+        }
+        
+        .timeline-item.warning .timeline-dot {
+            background: #f59e0b;
+        }
+        
+        .timeline-item-date {
+            font-size: 10px;
+            color: #999;
+            margin-bottom: 2px;
+        }
+        
+        .timeline-item-description {
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 3px;
+        }
+        
+        .timeline-item-amount {
+            font-size: 12px;
+            font-weight: 700;
+        }
+        
+        .timeline-item-amount.positive {
+            color: #10b981;
+        }
+        
+        .timeline-item-amount.negative {
+            color: #ef4444;
+        }
+        
+        .daily-chart {
+            position: relative;
+            height: 200px;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+        
+        .month-comparison {
+            background: white;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .month-comparison-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        
+        .comparison-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+        
+        .comparison-item-label {
+            color: #666;
+        }
+        
+        .comparison-item-value {
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .comparison-item-value.positive {
+            color: #10b981;
+        }
+        
+        .comparison-item-value.negative {
+            color: #ef4444;
+        }
+        
+        .milestone-box {
+            background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+            border: 1px solid #86efac;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 8px;
+        }
+        
+        .milestone-box.warning {
+            background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
+            border-color: #fcd34d;
+        }
+        
+        .milestone-box.danger {
+            background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 100%);
+            border-color: #fca5a5;
+        }
+        
+        .milestone-text {
+            font-size: 11px;
+            line-height: 1.5;
+            color: #166534;
+        }
+        
+        .milestone-box.warning .milestone-text {
+            color: #92400e;
+        }
+        
+        .milestone-box.danger .milestone-text {
+            color: #991b1b;
+        }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-width: 480px;
+            margin: 0 auto;
+            background: white;
+            border-top: 1px solid #e5e7eb;
+            padding: 8px 0;
+            display: flex;
+            justify-content: space-around;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+            z-index: 100;
+        }
+        
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 8px 4px;
+            font-size: 9px;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 8px;
+            margin: 0 4px;
+        }
+        
+        .nav-item.active {
+            color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .nav-item .icon {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+        
+        .nav-label {
+            font-weight: 600;
+        }
+        
+        .section {
+            display: none;
+        }
+        
+        .section.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            max-width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        .modal-header {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .detail-section {
+            margin-bottom: 20px;
+        }
+
+        .detail-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .detail-item-name {
+            color: #333;
+        }
+
+        .detail-item-value {
+            font-weight: 700;
+        }
+
+        .detail-item-value.positive {
+            color: #10b981;
+        }
+
+        .detail-item-value.negative {
+            color: #ef4444;
+        }
+
+        /* 월별 차트 바 스타일 */
+        .month-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+
+        .month-bar:hover {
+            background: #f8f9fa;
+        }
+
+        .month-bar-label {
+            width: 40px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .month-bar-visual {
+            flex: 1;
+            height: 20px;
+            border-radius: 4px;
+            margin: 0 8px;
+            position: relative;
+            background: #e5e7eb;
+        }
+
+        .month-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .month-bar-fill.positive {
+            background: linear-gradient(90deg, #10b981, #059669);
+        }
+
+        .month-bar-fill.negative {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        .month-bar-value {
+            font-size: 11px;
+            font-weight: 700;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .month-bar-value.positive {
+            color: #10b981;
+        }
+
+        .month-bar-value.negative {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+
+        <!-- 언어 토글 버튼 -->
+        <div style="background: white; padding: 12px; text-align: center; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);">
+            <button onclick="toggleLanguage('ko')" id="langBtnKo" style="padding: 8px 16px; margin: 0 6px; border: 2px solid #667eea; background: #667eea; color: white; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 12px;">
+                🇰🇷 한글
+            </button>
+            <button onclick="toggleLanguage('pt')" id="langBtnPt" style="padding: 8px 16px; margin: 0 6px; border: 2px solid #e5e7eb; background: white; color: #666; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 12px;">
+                🇧🇷 Português
+            </button>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Daily Dashboard Section -->
+            <div class="section active" id="dashboard-section">
+
+                <!-- 1. 카드 잔고 섹션 -->
+                <div class="card">
+                    <div class="card-header" style="margin-bottom: 14px;" id="cardBalanceHeader">💳 카드 잔고</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <!-- 삼성카드 -->
+                        <div style="padding: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                            <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; opacity: 0.9;" id="samsungCardName">삼성카드</div>
+                            <div style="font-size: 10px; margin-bottom: 4px;" id="samsungCardLimitHeader">한도: -</div>
+                            <div style="font-size: 10px; margin-bottom: 4px;" id="samsungCardUsedHeader">사용: -</div>
+                            <div style="font-size: 12px; font-weight: 700; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);" id="samsungCardRemainingHeader">잔여: -</div>
+                        </div>
+
+                        <!-- 현대카드 -->
+                        <div style="padding: 14px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 12px; color: white;">
+                            <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px; opacity: 0.9;" id="hyundaiCardName">현대카드</div>
+                            <div style="font-size: 10px; margin-bottom: 4px;" id="hyundaiCardLimitHeader">한도: -</div>
+                            <div style="font-size: 10px; margin-bottom: 4px;" id="hyundaiCardUsedHeader">사용: -</div>
+                            <div style="font-size: 12px; font-weight: 700; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.3);" id="hyundaiCardRemainingHeader">잔여: -</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 현금 잔고 섹션 -->
+                <div class="card">
+                    <div class="card-header" style="margin-bottom: 14px;" id="cashBalanceHeader">💰 현금 잔고</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <!-- 좌측: 잔고 정보 -->
+                        <div>
+                            <div style="text-align: left;">
+                                <div style="font-size: 11px; color: #999; margin-bottom: 6px;" id="balanceDate">2025년 2월 1일 (토)</div>
+                                <div style="font-size: 28px; font-weight: 700; margin-bottom: 12px;" id="currentBalance">₩2,337,459</div>
+                            </div>
+                        </div>
+
+                        <!-- 우측: 남은 기간 타임라인 -->
+                        <div style="border-left: 1px solid #e5e7eb; padding-left: 16px;">
+                            <div style="font-size: 11px; font-weight: 600; color: #666; margin-bottom: 10px;" id="scheduleRemainingLabel">이달 남은 일정</div>
+                            <div id="remainingMonthTimeline" style="max-height: 300px; overflow-y: auto; padding-right: 8px;">
+                                <!-- 타임라인 항목들이 여기에 표시됨 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. 예측 잔고 섹션 -->
+                <div class="card">
+                    <div class="card-header" style="margin-bottom: 14px;" id="forecastBalanceHeader">📊 예측 잔고 (연간)</div>
+                    <div id="monthlyChart" style="padding: 10px 0;"></div>
+
+                    <!-- 연간 합계 -->
+                    <div style="margin-top: 20px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; text-align: center;">
+                            <div>
+                                <div style="font-size: 10px; color: #999; margin-bottom: 4px;" id="totalExpenseLabel">총 지출</div>
+                                <div style="font-size: 16px; font-weight: 700; color: #ef4444;" id="yearTotalExpense">-₩0</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 10px; color: #999; margin-bottom: 4px;" id="totalIncomeLabel">총 수입</div>
+                                <div style="font-size: 16px; font-weight: 700; color: #10b981;" id="yearTotalIncome">+₩0</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 10px; color: #999; margin-bottom: 4px;" id="requiredAmountLabel">필요 금액</div>
+                                <div style="font-size: 16px; font-weight: 700;" id="yearNetIncome">₩0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 월말까지 예정 내역 모달 -->
+        <div class="modal" id="monthEndModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span>📋 월말까지 예정 내역</span>
+                    <span class="modal-close" onclick="closeMonthEndModal()">×</span>
+                </div>
+                <div id="monthEndModalContent"></div>
+            </div>
+        </div>
+
+        <!-- 월별 상세 내역 모달 -->
+        <div class="modal" id="monthDetailModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <span id="monthDetailTitle">📋 월별 상세 내역</span>
+                    <span class="modal-close" onclick="closeMonthDetailModal()">×</span>
+                </div>
+                <div id="monthDetailContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 2025년 1월 1일을 기준으로 설정
+        const startOfYear = new Date(2025, 0, 1);
+        
+        // 오늘 날짜 설정 (실제 오늘 날짜)
+        let today = new Date(); // 실제 오늘 날짜
+        console.log('📅 현재 날짜:', today.toLocaleDateString('ko-KR'), '/', today.getMonth() + 1, '월', today.getDate(), '일');
+        
+        // 1월 초기 잔고
+        const initialBalance = 2337459;
+
+        // 월별 데이터 (Google Sheets에서 로드됨)
+        let monthlyData = {};
+
+        // 오늘의 실제 잔고 (Google Sheets 기준날짜/금액 기반 계산)
+        let todayActualBalance = null;
+
+        // 항목 데이터 (B72:F107에서 로드됨)
+        let baseDate = null;
+        let baseAmount = 0;
+        let items = [];
+
+        // 카드 한도 정보 (Google Sheets에서 로드됨)
+        let cardInfo = {
+            samsung: { limit: 0, used: 0, remaining: 0 },
+            hyundai: { limit: 0, used: 0, remaining: 0 }
+        };
+
+        // 월급 입금일 (7일, 14일, 21일, 28일 가정)
+        const salaryDays = [7, 14, 21, 28];
+
+        // 현재 언어
+        let currentLang = 'ko';
+
+        // 번역 데이터
+        const translations = {
+            ko: {
+                cardBalance: '💳 카드 잔고',
+                cashBalance: '💰 현금 잔고',
+                forecastBalance: '📊 예측 잔고 (연간)',
+                samsung: '삼성카드',
+                hyundai: '현대카드',
+                limit: '한도',
+                used: '사용',
+                remaining: '잔여',
+                scheduleRemaining: '이달 남은 일정',
+                totalExpense: '총 지출',
+                totalIncome: '총 수입',
+                requiredAmount: '필요 금액',
+                income: '수입',
+                expense: '지출',
+                month: '월',
+                cashBalanceLabel: '현금잔고',
+                noSchedule: '예정된 일정이 없습니다',
+                card: '카드',
+                days: ['일', '월', '화', '수', '목', '금', '토'],
+                months: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
+            },
+            pt: {
+                cardBalance: '💳 Saldo do Cartão',
+                cashBalance: '💰 Saldo em Dinheiro',
+                forecastBalance: '📊 Previsão de Saldo (Anual)',
+                samsung: 'Samsung Card',
+                hyundai: 'Hyundai Card',
+                limit: 'Limite',
+                used: 'Usado',
+                remaining: 'Restante',
+                scheduleRemaining: 'Agenda Restante deste Mês',
+                totalExpense: 'Despesa Total',
+                totalIncome: 'Renda Total',
+                requiredAmount: 'Valor Necessário',
+                income: 'Renda',
+                expense: 'Despesa',
+                month: '',
+                cashBalanceLabel: 'Saldo em Dinheiro',
+                noSchedule: 'Não há eventos programados',
+                card: 'Cartão',
+                days: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+                months: ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'],
+                items: {
+                    '호베르따 1월 수입': 'Salário de Roberta (Janeiro)',
+                    '청약': 'Poupança',
+                    '퇴직금': 'Fundo de Aposentadoria',
+                    '언어치료': 'Terapia de Fala',
+                    '가스비': 'Conta de Gás',
+                    '관리비': 'Taxa de Manutenção',
+                    '전기세': 'Conta de Luz',
+                    '수도세': 'Conta de Água',
+                    '인터넷': 'Internet',
+                    '휴대폰': 'Celular',
+                    '보험': 'Seguro',
+                    '생활비': 'Despesas de Vida',
+                    '식비': 'Alimentação',
+                    '교통비': 'Transporte',
+                    '의료비': 'Despesas Médicas',
+                    '교육비': 'Educação',
+                    '월급': 'Salário',
+                    '수입': 'Renda',
+                    '지출': 'Despesa',
+                    '현금': 'Dinheiro',
+                    '삼성카드': 'Samsung Card',
+                    '현대카드': 'Hyundai Card'
+                }
+            }
+        };
+
+        // 항목명 번역 함수
+        function translateItemName(itemName) {
+            if (currentLang === 'ko') return itemName;
+
+            // 결제수단 제거 (현금, 삼성카드, 현대카드)
+            let cleanName = itemName.replace(/현금$/, '').replace(/삼성카드$/, '').replace(/현대카드$/, '');
+
+            // 번역 사전에서 찾기
+            if (translations.pt.items[cleanName]) {
+                return translations.pt.items[cleanName];
+            }
+
+            // 부분 매칭 (예: "호베르따 1월 수입" -> "호베르따" 부분만)
+            for (let key in translations.pt.items) {
+                if (cleanName.includes(key)) {
+                    return cleanName.replace(key, translations.pt.items[key]);
+                }
+            }
+
+            return itemName;
+        }
+
+        // 언어 토글 함수
+        function toggleLanguage(lang) {
+            currentLang = lang;
+
+            // 버튼 스타일 업데이트
+            const btnKo = document.getElementById('langBtnKo');
+            const btnPt = document.getElementById('langBtnPt');
+
+            if (lang === 'ko') {
+                btnKo.style.background = '#667eea';
+                btnKo.style.color = 'white';
+                btnKo.style.borderColor = '#667eea';
+
+                btnPt.style.background = 'white';
+                btnPt.style.color = '#666';
+                btnPt.style.borderColor = '#e5e7eb';
+            } else {
+                btnPt.style.background = '#667eea';
+                btnPt.style.color = 'white';
+                btnPt.style.borderColor = '#667eea';
+
+                btnKo.style.background = 'white';
+                btnKo.style.color = '#666';
+                btnKo.style.borderColor = '#e5e7eb';
+            }
+
+            // UI 업데이트
+            updateUI();
+        }
+
+        // 번역 헬퍼 함수
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        // 날짜 포맷 함수
+        function formatDate(date) {
+            if (currentLang === 'ko') {
+                return date.toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            } else {
+                // 포르투갈어: "21 de janeiro de 2026"
+                const day = date.getDate();
+                const month = translations.pt.months[date.getMonth()];
+                const year = date.getFullYear();
+                return `${day} de ${month} de ${year}`;
+            }
+        }
+
+        // 요일 번역 함수
+        function getDayName(dayIndex) {
+            return translations[currentLang].days[dayIndex];
+        }
+
+        // 짧은 날짜 포맷 (타임라인용)
+        function formatShortDate(date) {
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            return `${month}/${day}`;
+        }
+
+        // 카드 한도 정보 UI 업데이트
+        function updateCardInfo() {
+            if (!cardInfo || !cardInfo.samsung || !cardInfo.hyundai) {
+                console.log('⚠️ 카드 정보가 로드되지 않았습니다');
+                return;
+            }
+
+            // 헤더 텍스트 번역
+            const cardBalanceHeader = document.getElementById('cardBalanceHeader');
+            const samsungCardName = document.getElementById('samsungCardName');
+            const hyundaiCardName = document.getElementById('hyundaiCardName');
+
+            if (cardBalanceHeader) cardBalanceHeader.textContent = t('cardBalance');
+            if (samsungCardName) samsungCardName.textContent = t('samsung');
+            if (hyundaiCardName) hyundaiCardName.textContent = t('hyundai');
+
+            // 삼성카드 정보
+            const samsungLimit = cardInfo.samsung.limit || 0;
+            const samsungUsed = cardInfo.samsung.used || 0;
+            const samsungRemaining = cardInfo.samsung.remaining || 0;
+
+            // 헤더 업데이트 (안전하게)
+            const samsungLimitHeader = document.getElementById('samsungCardLimitHeader');
+            const samsungUsedHeader = document.getElementById('samsungCardUsedHeader');
+            const samsungRemainingHeader = document.getElementById('samsungCardRemainingHeader');
+
+            if (samsungLimitHeader) samsungLimitHeader.textContent = `${t('limit')}: ₩${samsungLimit.toLocaleString('ko-KR')}`;
+            if (samsungUsedHeader) samsungUsedHeader.textContent = `${t('used')}: ₩${samsungUsed.toLocaleString('ko-KR')}`;
+            if (samsungRemainingHeader) samsungRemainingHeader.textContent = `${t('remaining')}: ₩${samsungRemaining.toLocaleString('ko-KR')}`;
+
+            // 현대카드 정보
+            const hyundaiLimit = cardInfo.hyundai.limit || 0;
+            const hyundaiUsed = cardInfo.hyundai.used || 0;
+            const hyundaiRemaining = cardInfo.hyundai.remaining || 0;
+
+            // 헤더 업데이트 (안전하게)
+            const hyundaiLimitHeader = document.getElementById('hyundaiCardLimitHeader');
+            const hyundaiUsedHeader = document.getElementById('hyundaiCardUsedHeader');
+            const hyundaiRemainingHeader = document.getElementById('hyundaiCardRemainingHeader');
+
+            if (hyundaiLimitHeader) hyundaiLimitHeader.textContent = `${t('limit')}: ₩${hyundaiLimit.toLocaleString('ko-KR')}`;
+            if (hyundaiUsedHeader) hyundaiUsedHeader.textContent = `${t('used')}: ₩${hyundaiUsed.toLocaleString('ko-KR')}`;
+            if (hyundaiRemainingHeader) hyundaiRemainingHeader.textContent = `${t('remaining')}: ₩${hyundaiRemaining.toLocaleString('ko-KR')}`;
+
+            console.log('💳 카드 정보 UI 업데이트 완료');
+        }
+
+        // Google Sheets에서 데이터 로드
+        async function loadMonthlyData() {
+            try {
+                const response = await fetch('/api/monthly-data');
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    // API 응답을 숫자 키 형식으로 변환
+                    Object.keys(result.data).forEach(monthCode => {
+                        const monthNum = parseInt(monthCode);
+                        monthlyData[monthNum] = result.data[monthCode];
+                    });
+                    console.log('✅ Google Sheets 데이터 로드 성공:', monthlyData);
+                    return true;
+                } else {
+                    console.error('❌ 데이터 로드 실패:', result.error);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ API 호출 실패:', error);
+                return false;
+            }
+        }
+
+        // 프론트엔드에서 직접 오늘 잔고 계산
+        function calculateTodayBalance() {
+            if (!baseDate || !items || items.length === 0) {
+                console.warn('⚠️ 기준 데이터가 없어서 잔고를 계산할 수 없습니다');
+                return 0;
+            }
+
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            items.forEach(item => {
+                const freq = item.frequency ? item.frequency.toLowerCase().trim() : '';
+
+                // 매주 항목인 경우 이번 달 총 발생 횟수로 나누기
+                let monthlyOccurrences = 1;
+                if (freq.includes('매주')) {
+                    const dayNames = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
+                    const dayMatch = freq.match(/(월|화|수|목|금|토|일)/);
+                    if (dayMatch) {
+                        const targetDayOfWeek = dayNames[dayMatch[1]];
+                        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                        let count = 0;
+                        for (let d = new Date(monthStart); d <= monthEnd; d.setDate(d.getDate() + 1)) {
+                            if (d.getDay() === targetDayOfWeek) count++;
+                        }
+                        monthlyOccurrences = count;
+                    }
+                }
+
+                const expensePerOccurrence = freq.includes('매주') ? Math.round(item.expense / monthlyOccurrences) : item.expense;
+                const incomePerOccurrence = freq.includes('매주') ? Math.round(item.income / monthlyOccurrences) : item.income;
+
+                const count = calculateOccurrences(item.frequency, baseDate, today);
+                if (count > 0) {
+                    totalIncome += incomePerOccurrence * count;
+
+                    // 카드 결제는 잔고에서 제외 (현금만 계산)
+                    const paymentType = (item.paymentType || '').toLowerCase();
+                    if (paymentType === '현금' || paymentType === '') {
+                        totalExpense += expensePerOccurrence * count;
+                    }
+                }
+            });
+
+            const balance = baseAmount + totalIncome - totalExpense;
+            console.log('✅ 오늘 잔고 계산 성공:', balance);
+            console.log(`   기준금액: ${baseAmount}, 수입: ${totalIncome}, 현금지출: ${totalExpense}`);
+
+            return balance;
+        }
+
+        // Google Sheets 항목 리스트 로드 (B72:F107)
+        async function loadItems() {
+            try {
+                const response = await fetch('/api/items');
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    baseDate = new Date(result.data.baseDate);
+                    baseAmount = result.data.baseAmount;
+                    items = result.data.items;
+
+                    // 카드 정보 로드
+                    if (result.data.cardInfo) {
+                        cardInfo = result.data.cardInfo;
+                        console.log('💳 카드 정보 로드 성공');
+                        console.log('  삼성카드:', cardInfo.samsung);
+                        console.log('  현대카드:', cardInfo.hyundai);
+
+                        // 카드 정보 UI 즉시 업데이트
+                        updateCardInfo();
+                    }
+
+                    console.log('✅ 항목 데이터 로드 성공:', items.length, '건');
+                    console.log('📅 기준날짜:', baseDate.toLocaleDateString('ko-KR'));
+                    console.log('💰 기준금액:', baseAmount);
+                    return true;
+                } else {
+                    console.error('❌ 항목 데이터 로드 실패:', result.error);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ 항목 API 호출 실패:', error);
+                return false;
+            }
+        }
+
+        // 일일 평균 지출
+        function getDailyAverage(month) {
+            if (!monthlyData[month]) return 0;
+            return monthlyData[month].expense / 30;
+        }
+        
+        // 오늘까지의 누적 지출
+        function getTodayAccumulatedExpense() {
+            const currentMonth = today.getMonth() + 1;
+            const dayOfMonth = today.getDate();
+            const daysInCurrentMonth = dayOfMonth;
+            
+            let totalExpense = 0;
+            const dailyExp = getDailyAverage(currentMonth);
+            totalExpense = dailyExp * daysInCurrentMonth;
+            
+            return Math.round(totalExpense);
+        }
+        
+        // 오늘 수입
+        function getTodayIncome() {
+            const dayOfMonth = today.getDate();
+            return salaryDays.includes(dayOfMonth) ? 1500000 : 0;
+        }
+        
+        // 현재 잔고
+        function getCurrentBalance() {
+            // items 데이터가 로드되었으면 프론트엔드에서 직접 계산
+            if (baseDate && items && items.length > 0) {
+                return calculateTodayBalance();
+            }
+
+            // 데이터가 없으면 0 반환
+            return 0;
+        }
+        
+        // 마이너스 발생까지 남은 일수
+        function getDaysToNegative() {
+            const currentBalance = getCurrentBalance();
+            const currentMonth = today.getMonth() + 1;
+            const dailyExpense = getDailyAverage(currentMonth);
+            
+            if (currentBalance <= 0) return 0;
+            return Math.ceil(currentBalance / dailyExpense);
+        }
+        
+        // UI 업데이트
+        function updateUI() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+
+            // 헤더 번역
+            const cashBalanceHeader = document.getElementById('cashBalanceHeader');
+            const forecastBalanceHeader = document.getElementById('forecastBalanceHeader');
+            const scheduleRemainingLabel = document.getElementById('scheduleRemainingLabel');
+            const totalExpenseLabel = document.getElementById('totalExpenseLabel');
+            const totalIncomeLabel = document.getElementById('totalIncomeLabel');
+            const requiredAmountLabel = document.getElementById('requiredAmountLabel');
+
+            if (cashBalanceHeader) cashBalanceHeader.textContent = t('cashBalance');
+            if (forecastBalanceHeader) forecastBalanceHeader.textContent = t('forecastBalance');
+            if (scheduleRemainingLabel) scheduleRemainingLabel.textContent = t('scheduleRemaining');
+            if (totalExpenseLabel) totalExpenseLabel.textContent = t('totalExpense');
+            if (totalIncomeLabel) totalIncomeLabel.textContent = t('totalIncome');
+            if (requiredAmountLabel) requiredAmountLabel.textContent = t('requiredAmount');
+
+            // 요일
+            const dayOfWeek = getDayName(today.getDay());
+
+            // 현재 잔고 카드의 날짜 (요일 포함)
+            const dateStr = formatDate(today);
+            const balanceDateStr = `${dateStr} (${dayOfWeek})`;
+            const balanceDateEl = document.getElementById('balanceDate');
+            if (balanceDateEl) balanceDateEl.textContent = balanceDateStr;
+
+            // 현재 잔고
+            const balance = getCurrentBalance();
+            const currentBalanceEl = document.getElementById('currentBalance');
+            if (currentBalanceEl) {
+                currentBalanceEl.textContent = (balance < 0 ? '-' : '') + '₩' + Math.abs(balance).toLocaleString('ko-KR');
+                currentBalanceEl.className = balance < 0 ? 'negative' : 'positive';
+            }
+
+            // 월별 차트
+            renderMonthlyChart();
+
+            // 31일 지출 예상 타임라인 (비활성화 - items 기반으로 renderRemainingMonthTimeline 사용)
+            // render31DayTimeline();
+
+            // 월별 지출 예상 (비활성화 - items 기반 계산으로 대체)
+            // renderMonthlyExpenseForecast();
+
+            // 월별 비교 (비활성화 - items 기반 계산으로 대체)
+            // renderMonthComparison();
+
+            // 카드 한도 정보 업데이트
+            updateCardInfo();
+
+            // 남은 기간 타임라인 렌더링
+            renderRemainingMonthTimeline();
+        }
+
+        // 이달 남은 기간 타임라인 렌더링
+        function renderRemainingMonthTimeline() {
+            console.log('🔄 타임라인 렌더링 시작...');
+            let html = '';
+            let runningBalance = getCurrentBalance();
+            const currentMonth = today.getMonth();
+            const monthEnd = new Date(today.getFullYear(), currentMonth + 1, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            console.log('📅 내일:', tomorrow.toLocaleDateString('ko-KR'));
+            console.log('📅 이달 말:', monthEnd.toLocaleDateString('ko-KR'));
+
+            // 날짜별로 이벤트 수집 (Map 사용)
+            const eventsByDate = new Map();
+
+            // 내일부터 이달 말까지 모든 날짜 생성
+            for (let d = new Date(tomorrow); d <= monthEnd; d.setDate(d.getDate() + 1)) {
+                const dateKey = new Date(d).toISOString().split('T')[0];
+                eventsByDate.set(dateKey, []);
+            }
+
+            // 각 항목의 발생 날짜 확인
+            items.forEach(item => {
+                const freq = item.frequency ? item.frequency.toLowerCase().trim() : '';
+                console.log(`🔍 항목 "${item.itemName}" (${item.frequency}) 체크 중...`);
+
+                // 매주 항목인 경우 이번 달 총 발생 횟수를 먼저 계산
+                let monthlyOccurrences = 1;
+                if (freq.includes('매주')) {
+                    const dayNames = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
+                    const dayMatch = freq.match(/(월|화|수|목|금|토|일)/);
+                    if (dayMatch) {
+                        const targetDayOfWeek = dayNames[dayMatch[1]];
+                        // 이번 달 1일부터 말일까지 해당 요일이 몇 번 나오는지 계산
+                        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                        let count = 0;
+                        for (let d = new Date(monthStart); d <= monthEnd; d.setDate(d.getDate() + 1)) {
+                            if (d.getDay() === targetDayOfWeek) count++;
+                        }
+                        monthlyOccurrences = count;
+                        console.log(`  📅 이번 달 ${dayMatch[1]}요일은 ${count}번 발생`);
+                    }
+                }
+
+                // 매주 항목의 1회 금액 계산
+                const expensePerOccurrence = freq.includes('매주') ? Math.round(item.expense / monthlyOccurrences) : item.expense;
+                const incomePerOccurrence = freq.includes('매주') ? Math.round(item.income / monthlyOccurrences) : item.income;
+
+                for (let d = new Date(tomorrow); d <= monthEnd; d.setDate(d.getDate() + 1)) {
+                    const currentDate = new Date(d);
+                    let shouldAdd = false;
+
+                    // 매월 X일
+                    if (freq.includes('매월')) {
+                        const dayMatch = freq.match(/(\d+)일/);
+                        if (dayMatch && parseInt(dayMatch[1]) === currentDate.getDate()) {
+                            shouldAdd = true;
+                        }
+                    }
+                    // X일 (매월 반복)
+                    else if (freq.match(/^(\d+)일$/)) {
+                        const dayMatch = freq.match(/^(\d+)일$/);
+                        if (dayMatch && parseInt(dayMatch[1]) === currentDate.getDate()) {
+                            shouldAdd = true;
+                        }
+                    }
+                    // 매주 X요일
+                    else if (freq.includes('매주')) {
+                        const dayNames = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
+                        const dayMatch = freq.match(/(월|화|수|목|금|토|일)/);
+                        if (dayMatch && currentDate.getDay() === dayNames[dayMatch[1]]) {
+                            shouldAdd = true;
+                        }
+                    }
+                    // 특정 월일 (예: "1월 24일")
+                    else if (freq.match(/(\d+)월\s*(\d+)일/)) {
+                        const specificDateMatch = freq.match(/(\d+)월\s*(\d+)일/);
+                        if (specificDateMatch) {
+                            const targetMonth = parseInt(specificDateMatch[1]) - 1;
+                            const targetDay = parseInt(specificDateMatch[2]);
+                            if (currentDate.getMonth() === targetMonth && currentDate.getDate() === targetDay) {
+                                shouldAdd = true;
+                            }
+                        }
+                    }
+
+                    if (shouldAdd) {
+                        const dateKey = currentDate.toISOString().split('T')[0];
+                        eventsByDate.get(dateKey).push({
+                            itemName: item.itemName,
+                            expense: expensePerOccurrence,
+                            income: incomePerOccurrence,
+                            paymentType: item.paymentType || '현금'
+                        });
+                        console.log(`  ✅ ${dateKey}에 추가 (${item.paymentType || '현금'}) - 금액: ${expensePerOccurrence.toLocaleString()}`);
+                    }
+                }
+            });
+
+            // 이벤트가 있는 날짜만 렌더링
+            const sortedDates = Array.from(eventsByDate.keys()).sort();
+            let totalEvents = 0;
+
+            sortedDates.forEach(dateKey => {
+                const events = eventsByDate.get(dateKey);
+                if (events.length > 0) {
+                    const date = new Date(dateKey + 'T00:00:00');
+                    const dateStr = formatShortDate(date);
+                    const dayOfWeek = getDayName(date.getDay());
+
+                    // 각 이벤트를 개별적으로 표시
+                    events.forEach(event => {
+                        // 현금 지출만 잔고에 반영
+                        const paymentType = (event.paymentType || '').toLowerCase();
+                        const cashExpense = (paymentType === '현금' || paymentType === '') ? event.expense : 0;
+
+                        runningBalance += event.income - cashExpense;
+                        totalEvents++;
+
+                        // 결제수단 배지 색상
+                        let paymentBadge = '';
+                        if (event.paymentType) {
+                            let badgeColor = '#6b7280';
+                            if (event.paymentType.includes('삼성')) badgeColor = '#667eea';
+                            else if (event.paymentType.includes('현대')) badgeColor = '#f093fb';
+
+                            paymentBadge = `<span style="font-size: 9px; padding: 2px 6px; background: ${badgeColor}; color: white; border-radius: 4px; margin-left: 6px;">${event.paymentType}</span>`;
+                        }
+
+                        html += `
+                            <div style="margin-bottom: 10px; padding: 8px; background-color: #f9fafb; border-radius: 6px; border-left: 3px solid ${event.income > 0 ? '#10b981' : '#ef4444'};">
+                                <div style="font-size: 9px; color: #999; margin-bottom: 3px;">${dateStr} (${dayOfWeek})</div>
+                                <div style="font-size: 11px; font-weight: 600; color: #333; margin-bottom: 3px;">${translateItemName(event.itemName)}${paymentBadge}</div>
+                                ${event.expense > 0 ? `<div style="font-size: 10px; color: #ef4444; font-weight: 600;">-₩${event.expense.toLocaleString('ko-KR')}${cashExpense === 0 ? ` <span style="font-size: 8px; color: #999;">(${t('card')})</span>` : ''}</div>` : ''}
+                                ${event.income > 0 ? `<div style="font-size: 10px; color: #10b981; font-weight: 600;">+₩${event.income.toLocaleString('ko-KR')}</div>` : ''}
+                                <div style="font-size: 9px; color: ${runningBalance < 0 ? '#ef4444' : '#6b7280'}; margin-top: 4px; font-weight: 500;">
+                                    ${t('cashBalanceLabel')}: ${runningBalance < 0 ? '-' : ''}₩${Math.abs(runningBalance).toLocaleString('ko-KR')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+            });
+
+            console.log('📊 찾은 이벤트 수:', totalEvents);
+
+            if (totalEvents === 0) {
+                html = `<div style="text-align: center; color: #999; font-size: 11px; padding: 20px;">${t('noSchedule')}</div>`;
+            }
+
+            document.getElementById('remainingMonthTimeline').innerHTML = html;
+            console.log('✅ 타임라인 렌더링 완료');
+        }
+
+        // 이달 말 예상 잔고 계산
+        function calculateMonthEndBalance() {
+            const currentBalance = getCurrentBalance();
+            const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0); // 이달 마지막 날
+            const remainingDays = Math.ceil((monthEnd - today) / (1000 * 60 * 60 * 24));
+
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            let totalExpense = 0;
+            let totalIncome = 0;
+            const upcomingItems = [];
+
+            items.forEach(item => {
+                const count = calculateOccurrences(item.frequency, tomorrow, monthEnd);
+                if (count > 0) {
+                    const expense = item.expense * count;
+                    totalExpense += expense;
+                    totalIncome += item.income * count;
+                    upcomingItems.push({
+                        name: item.itemName,
+                        frequency: item.frequency,
+                        count: count,
+                        expense: expense,
+                        income: item.income * count
+                    });
+                }
+            });
+
+            const balance = currentBalance + totalIncome - totalExpense;
+
+            return { balance, remainingDays, totalExpense, totalIncome, upcomingItems };
+        }
+
+        // 기준날짜부터 오늘까지/앞으로 지출/수입 계산
+        function calculateExpenseIncome() {
+            if (!baseDate || items.length === 0) {
+                return { pastExpense: 0, pastIncome: 0, futureExpense: 0, futureIncome: 0, pastItems: [], futureItems: [] };
+            }
+
+            let pastExpense = 0;
+            let pastIncome = 0;
+            let futureExpense = 0;
+            let futureIncome = 0;
+            const pastItems = [];
+            const futureItems = [];
+
+            const yearEnd = new Date(today.getFullYear(), 11, 31); // 12월 31일
+
+            items.forEach(item => {
+                // 기준날짜부터 오늘까지 발생 횟수
+                const pastCount = calculateOccurrences(item.frequency, baseDate, today);
+                // 내일부터 연말까지 발생 횟수
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const futureCount = calculateOccurrences(item.frequency, tomorrow, yearEnd);
+
+                if (pastCount > 0) {
+                    pastExpense += item.expense * pastCount;
+                    pastIncome += item.income * pastCount;
+                    pastItems.push({
+                        name: item.itemName,
+                        frequency: item.frequency,
+                        count: pastCount,
+                        expense: item.expense * pastCount,
+                        income: item.income * pastCount
+                    });
+                }
+
+                if (futureCount > 0) {
+                    futureExpense += item.expense * futureCount;
+                    futureIncome += item.income * futureCount;
+                    futureItems.push({
+                        name: item.itemName,
+                        frequency: item.frequency,
+                        count: futureCount,
+                        expense: item.expense * futureCount,
+                        income: item.income * futureCount
+                    });
+                }
+            });
+
+            return { pastExpense, pastIncome, futureExpense, futureIncome, pastItems, futureItems };
+        }
+
+        // 발생 횟수 계산 (googleSheets.js의 로직과 동일)
+        function calculateOccurrences(frequency, startDate, endDate) {
+            const freq = frequency.toLowerCase().trim();
+
+            // 1. 매월
+            if (freq === '매월' || freq.includes('monthly')) {
+                const monthsDiff = (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+                                  (endDate.getMonth() - startDate.getMonth());
+                return Math.max(0, monthsDiff + 1);
+            }
+
+            // 2. 매주 (예: "매주 수요일")
+            if (freq.includes('매주')) {
+                const dayMatch = freq.match(/(월|화|수|목|금|토|일)/);
+                if (dayMatch) {
+                    const days = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
+                    const targetDay = days[dayMatch[1]];
+                    let count = 0;
+                    const current = new Date(startDate);
+                    while (current <= endDate) {
+                        if (current.getDay() === targetDay) count++;
+                        current.setDate(current.getDate() + 1);
+                    }
+                    return count;
+                }
+            }
+
+            // 3. 특정일 (예: "8월 1일", "31일")
+            const dateMatch = freq.match(/(\d+)월\s*(\d+)일/) || freq.match(/^(\d+)일$/);
+            if (dateMatch) {
+                if (dateMatch[2]) {
+                    // "8월 1일" 형식
+                    const targetMonth = parseInt(dateMatch[1]);
+                    const targetDay = parseInt(dateMatch[2]);
+                    const targetDate = new Date(endDate.getFullYear(), targetMonth - 1, targetDay);
+                    return (targetDate >= startDate && targetDate <= endDate) ? 1 : 0;
+                } else {
+                    // "31일" 형식 (매월 31일)
+                    const targetDay = parseInt(dateMatch[1]);
+                    let count = 0;
+                    const current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+                    while (current <= endDate) {
+                        const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+                        if (targetDay <= daysInMonth) {
+                            const targetDate = new Date(current.getFullYear(), current.getMonth(), targetDay);
+                            if (targetDate >= startDate && targetDate <= endDate) count++;
+                        }
+                        current.setMonth(current.getMonth() + 1);
+                    }
+                    return count;
+                }
+            }
+
+            return 0;
+        }
+
+        // 월말까지 예정 내역 모달
+        function showMonthEndDetailsModal() {
+            const data = calculateMonthEndBalance();
+
+            let html = '';
+            html += `<div style="text-align: center; margin-bottom: 20px;">`;
+            html += `<div style="font-size: 14px; color: #999;">현재 잔고: <span style="font-weight: 700;">${getCurrentBalance().toLocaleString('ko-KR')}원</span></div>`;
+            html += `<div style="font-size: 18px; font-weight: 700; margin-top: 8px; color: ${data.balance < 0 ? '#ef4444' : '#10b981'};">`;
+            html += `월말 예상: ${data.balance < 0 ? '-' : '+'}₩${Math.abs(data.balance).toLocaleString('ko-KR')}`;
+            html += `</div></div>`;
+
+            // 지출 예정
+            html += '<div class="detail-section">';
+            html += '<div class="detail-section-title">📉 남은 기간 지출 예정</div>';
+            data.upcomingItems.filter(item => item.expense > 0).forEach(item => {
+                html += `
+                    <div class="detail-item">
+                        <span class="detail-item-name">${item.name} × ${item.count}회</span>
+                        <span class="detail-item-value negative">-₩${item.expense.toLocaleString('ko-KR')}</span>
+                    </div>
+                `;
+            });
+            html += `<div style="text-align: right; font-weight: 700; margin-top: 8px; color: #ef4444;">총 -₩${data.totalExpense.toLocaleString('ko-KR')}</div>`;
+            html += '</div>';
+
+            // 수입 예정
+            html += '<div class="detail-section">';
+            html += '<div class="detail-section-title">📈 남은 기간 수입 예정</div>';
+            data.upcomingItems.filter(item => item.income > 0).forEach(item => {
+                html += `
+                    <div class="detail-item">
+                        <span class="detail-item-name">${item.name} × ${item.count}회</span>
+                        <span class="detail-item-value positive">+₩${item.income.toLocaleString('ko-KR')}</span>
+                    </div>
+                `;
+            });
+            html += `<div style="text-align: right; font-weight: 700; margin-top: 8px; color: #10b981;">총 +₩${data.totalIncome.toLocaleString('ko-KR')}</div>`;
+            html += '</div>';
+
+            document.getElementById('monthEndModalContent').innerHTML = html;
+            document.getElementById('monthEndModal').classList.add('active');
+        }
+
+        function closeMonthEndModal() {
+            document.getElementById('monthEndModal').classList.remove('active');
+        }
+
+        // 월별 차트 렌더링
+        function renderMonthlyChart() {
+            let html = '';
+            let maxValue = 0;
+
+            // 각 월별 수입/지출 계산
+            const monthlyData = [];
+            let yearTotalIncome = 0;
+            let yearTotalExpense = 0;
+
+            for (let month = 1; month <= 12; month++) {
+                const monthStart = new Date(today.getFullYear(), month - 1, 1);
+                const monthEnd = new Date(today.getFullYear(), month, 0);
+
+                let monthIncome = 0;
+                let monthExpense = 0;
+
+                items.forEach(item => {
+                    const freq = item.frequency ? item.frequency.toLowerCase().trim() : '';
+
+                    // 매주 항목 처리
+                    let monthlyOccurrences = 1;
+                    if (freq.includes('매주')) {
+                        const dayNames = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
+                        const dayMatch = freq.match(/(월|화|수|목|금|토|일)/);
+                        if (dayMatch) {
+                            const targetDayOfWeek = dayNames[dayMatch[1]];
+                            let count = 0;
+                            for (let d = new Date(monthStart); d <= monthEnd; d.setDate(d.getDate() + 1)) {
+                                if (d.getDay() === targetDayOfWeek) count++;
+                            }
+                            monthlyOccurrences = count;
+                        }
+                    }
+
+                    const expensePerOccurrence = freq.includes('매주') ? Math.round(item.expense / monthlyOccurrences) : item.expense;
+                    const incomePerOccurrence = freq.includes('매주') ? Math.round(item.income / monthlyOccurrences) : item.income;
+
+                    const count = calculateOccurrences(item.frequency, monthStart, monthEnd);
+                    if (count > 0) {
+                        monthIncome += incomePerOccurrence * count;
+                        monthExpense += expensePerOccurrence * count;
+                    }
+                });
+
+                yearTotalIncome += monthIncome;
+                yearTotalExpense += monthExpense;
+
+                monthlyData.push({ month, monthIncome, monthExpense });
+                maxValue = Math.max(maxValue, monthIncome, monthExpense);
+            }
+
+            // 차트 렌더링 (수입과 지출을 각각 막대로)
+            monthlyData.forEach(data => {
+                const incomePercent = maxValue > 0 ? (data.monthIncome / maxValue) * 100 : 0;
+                const expensePercent = maxValue > 0 ? (data.monthExpense / maxValue) * 100 : 0;
+
+                html += `
+                    <div style="margin-bottom: 12px; cursor: pointer;" onclick="showMonthDetail(${data.month})">
+                        <div style="font-size: 11px; font-weight: 600; color: #666; margin-bottom: 4px;">${data.month}${t('month')}</div>
+
+                        <!-- 수입 바 -->
+                        <div style="display: flex; align-items: center; margin-bottom: 2px;">
+                            <div style="width: 40px; font-size: 9px; color: #10b981;">${t('income')}</div>
+                            <div style="flex: 1; height: 16px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden;">
+                                <div style="height: 100%; width: ${incomePercent}%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 4px;"></div>
+                            </div>
+                            <div style="width: 80px; font-size: 10px; font-weight: 600; color: #10b981; text-align: right;">
+                                +₩${(data.monthIncome / 10000).toFixed(0)}${currentLang === 'ko' ? '만' : 'k'}
+                            </div>
+                        </div>
+
+                        <!-- 지출 바 -->
+                        <div style="display: flex; align-items: center;">
+                            <div style="width: 40px; font-size: 9px; color: #ef4444;">${t('expense')}</div>
+                            <div style="flex: 1; height: 16px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden;">
+                                <div style="height: 100%; width: ${expensePercent}%; background: linear-gradient(90deg, #ef4444, #dc2626); border-radius: 4px;"></div>
+                            </div>
+                            <div style="width: 80px; font-size: 10px; font-weight: 600; color: #ef4444; text-align: right;">
+                                -₩${(data.monthExpense / 10000).toFixed(0)}${currentLang === 'ko' ? '만' : 'k'}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('monthlyChart').innerHTML = html;
+
+            // 연간 합계 업데이트
+            const yearNet = yearTotalIncome - yearTotalExpense;
+            document.getElementById('yearTotalExpense').textContent = `-₩${yearTotalExpense.toLocaleString('ko-KR')}`;
+            document.getElementById('yearTotalIncome').textContent = `+₩${yearTotalIncome.toLocaleString('ko-KR')}`;
+
+            const yearNetEl = document.getElementById('yearNetIncome');
+            yearNetEl.textContent = `${yearNet < 0 ? '-' : '+'}₩${Math.abs(yearNet).toLocaleString('ko-KR')}`;
+            yearNetEl.style.color = yearNet < 0 ? '#ef4444' : '#10b981';
+        }
+
+        // 월별 상세 내역 모달
+        function showMonthDetail(month) {
+            const monthStart = new Date(today.getFullYear(), month - 1, 1);
+            const monthEnd = new Date(today.getFullYear(), month, 0);
+
+            let totalIncome = 0;
+            let totalExpense = 0;
+            const expenseItems = [];
+            const incomeItems = [];
+
+            items.forEach(item => {
+                const count = calculateOccurrences(item.frequency, monthStart, monthEnd);
+                if (count > 0) {
+                    if (item.expense > 0) {
+                        totalExpense += item.expense * count;
+                        expenseItems.push({
+                            name: item.itemName,
+                            frequency: item.frequency,
+                            count: count,
+                            amount: item.expense * count
+                        });
+                    }
+                    if (item.income > 0) {
+                        totalIncome += item.income * count;
+                        incomeItems.push({
+                            name: item.itemName,
+                            frequency: item.frequency,
+                            count: count,
+                            amount: item.income * count
+                        });
+                    }
+                }
+            });
+
+            const netIncome = totalIncome - totalExpense;
+
+            document.getElementById('monthDetailTitle').textContent = `📋 ${month}월 상세 내역`;
+
+            let html = '';
+            html += `<div style="text-align: center; margin-bottom: 20px;">`;
+            html += `<div style="font-size: 14px; color: #999;">수입: <span style="color: #10b981; font-weight: 700;">+₩${totalIncome.toLocaleString('ko-KR')}</span></div>`;
+            html += `<div style="font-size: 14px; color: #999; margin-top: 4px;">지출: <span style="color: #ef4444; font-weight: 700;">-₩${totalExpense.toLocaleString('ko-KR')}</span></div>`;
+            html += `<div style="font-size: 18px; font-weight: 700; margin-top: 8px; color: ${netIncome < 0 ? '#ef4444' : '#10b981'};">`;
+            html += `순수입: ${netIncome < 0 ? '' : '+'}₩${netIncome.toLocaleString('ko-KR')}`;
+            html += `</div></div>`;
+
+            // 지출 항목
+            if (expenseItems.length > 0) {
+                expenseItems.sort((a, b) => b.amount - a.amount); // 큰 순서대로
+                html += '<div class="detail-section">';
+                html += '<div class="detail-section-title">📉 지출 항목</div>';
+                expenseItems.forEach(item => {
+                    html += `
+                        <div class="detail-item">
+                            <span class="detail-item-name">${item.name} × ${item.count}회</span>
+                            <span class="detail-item-value negative">-₩${item.amount.toLocaleString('ko-KR')}</span>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            // 수입 항목
+            if (incomeItems.length > 0) {
+                html += '<div class="detail-section">';
+                html += '<div class="detail-section-title">📈 수입 항목</div>';
+                incomeItems.forEach(item => {
+                    html += `
+                        <div class="detail-item">
+                            <span class="detail-item-name">${item.name} × ${item.count}회</span>
+                            <span class="detail-item-value positive">+₩${item.amount.toLocaleString('ko-KR')}</span>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+
+            document.getElementById('monthDetailContent').innerHTML = html;
+            document.getElementById('monthDetailModal').classList.add('active');
+        }
+
+        function closeMonthDetailModal() {
+            document.getElementById('monthDetailModal').classList.remove('active');
+        }
+
+        // 상세 내역 모달 표시
+        function showDetailsModal() {
+            const data = calculateExpenseIncome();
+
+            let html = '';
+
+            // 오늘까지 지출
+            html += '<div class="detail-section">';
+            html += '<div class="detail-section-title">📉 오늘까지 지출</div>';
+            data.pastItems.filter(item => item.expense > 0).forEach(item => {
+                html += `
+                    <div class="detail-item">
+                        <span class="detail-item-name">${item.name} (${item.frequency}) × ${item.count}회</span>
+                        <span class="detail-item-value negative">-₩${item.expense.toLocaleString('ko-KR')}</span>
+                    </div>
+                `;
+            });
+            html += `<div style="text-align: right; font-weight: 700; margin-top: 8px; color: #ef4444;">총 -₩${data.pastExpense.toLocaleString('ko-KR')}</div>`;
+            html += '</div>';
+
+            // 앞으로 지출
+            html += '<div class="detail-section">';
+            html += '<div class="detail-section-title">📉 앞으로 지출</div>';
+            data.futureItems.filter(item => item.expense > 0).forEach(item => {
+                html += `
+                    <div class="detail-item">
+                        <span class="detail-item-name">${item.name} (${item.frequency}) × ${item.count}회</span>
+                        <span class="detail-item-value negative">-₩${item.expense.toLocaleString('ko-KR')}</span>
+                    </div>
+                `;
+            });
+            html += `<div style="text-align: right; font-weight: 700; margin-top: 8px; color: #ef4444;">총 -₩${data.futureExpense.toLocaleString('ko-KR')}</div>`;
+            html += '</div>';
+
+            // 오늘까지 수입
+            html += '<div class="detail-section">';
+            html += '<div class="detail-section-title">📈 오늘까지 수입</div>';
+            data.pastItems.filter(item => item.income > 0).forEach(item => {
+                html += `
+                    <div class="detail-item">
+                        <span class="detail-item-name">${item.name} (${item.frequency}) × ${item.count}회</span>
+                        <span class="detail-item-value positive">+₩${item.income.toLocaleString('ko-KR')}</span>
+                    </div>
+                `;
+            });
+            html += `<div style="text-align: right; font-weight: 700; margin-top: 8px; color: #10b981;">총 +₩${data.pastIncome.toLocaleString('ko-KR')}</div>`;
+            html += '</div>';
+
+            // 앞으로 수입
+            html += '<div class="detail-section">';
+            html += '<div class="detail-section-title">📈 앞으로 수입</div>';
+            data.futureItems.filter(item => item.income > 0).forEach(item => {
+                html += `
+                    <div class="detail-item">
+                        <span class="detail-item-name">${item.name} (${item.frequency}) × ${item.count}회</span>
+                        <span class="detail-item-value positive">+₩${item.income.toLocaleString('ko-KR')}</span>
+                    </div>
+                `;
+            });
+            html += `<div style="text-align: right; font-weight: 700; margin-top: 8px; color: #10b981;">총 +₩${data.futureIncome.toLocaleString('ko-KR')}</div>`;
+            html += '</div>';
+
+            document.getElementById('modalDetailsContent').innerHTML = html;
+            document.getElementById('detailsModal').classList.add('active');
+        }
+
+        // 상세 내역 모달 닫기
+        function closeDetailsModal() {
+            document.getElementById('detailsModal').classList.remove('active');
+        }
+
+        // 월별 비교
+        function renderMonthComparison() {
+            let html = '';
+            
+            for (let month = 1; month <= 12; month++) {
+                const data = monthlyData[month];
+                const monthName = month + '월';
+                const netFlow = data.income - data.expense;
+                
+                html += `
+                    <div class="comparison-item">
+                        <span class="comparison-item-label">${monthName}</span>
+                        <span class="comparison-item-value ${netFlow < 0 ? 'negative' : 'positive'}">
+                            ${netFlow < 0 ? '-' : '+'}₩${Math.abs(netFlow).toLocaleString('ko-KR')}
+                        </span>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('monthComparisonContent').innerHTML = html;
+        }
+        
+        // 오늘부터 31일간 예상 지출 타임라인
+        function render31DayTimeline() {
+            let html = '';
+            let currentBalance = getCurrentBalance();
+            const currentMonth = today.getMonth() + 1;
+
+            for (let i = 0; i < 31; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() + i);
+                const dayOfMonth = date.getDate();
+                const month = date.getMonth() + 1;
+
+                // Google Sheets에서 해당 날짜의 데이터 찾기
+                const sheetData = timelineData.find(item => item.day === dayOfMonth);
+
+                let expense = 0;
+                let income = 0;
+                let itemName = '일반 지출';
+
+                if (sheetData && month === currentMonth) {
+                    // 현재 월 데이터가 있으면 실제 데이터 사용
+                    expense = sheetData.expense;
+                    income = sheetData.income;
+                    itemName = sheetData.item;
+                    currentBalance = sheetData.balance;
+                } else {
+                    // 없으면 평균값으로 예측
+                    expense = Math.round(getDailyAverage(month));
+                    currentBalance -= expense;
+                }
+
+                const dateStr = `${month}월 ${dayOfMonth}일`;
+                const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'][date.getDay()];
+
+                let itemClass = 'expense';
+                if (income > 0) itemClass = 'income';
+                if (currentBalance < 0) itemClass = 'warning';
+
+                html += `
+                    <div class="timeline-item ${itemClass}">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-item-date">${dateStr} (${dayOfWeek})</div>
+                        <div class="timeline-item-description">${itemName}</div>
+                        <div class="timeline-item-amount">
+                            ${expense > 0 ? `지출: -₩${expense.toLocaleString('ko-KR')}` : ''}
+                            ${income > 0 ? `수입: +₩${income.toLocaleString('ko-KR')}` : ''}
+                        </div>
+                        <div class="timeline-item-amount ${currentBalance < 0 ? 'negative' : 'positive'}">
+                            잔고: ${currentBalance < 0 ? '-' : ''}₩${Math.abs(currentBalance).toLocaleString('ko-KR')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('dashboardTimeline').innerHTML = html;
+        }
+
+        // 월별 지출 예상
+        function renderMonthlyExpenseForecast() {
+            let html = '';
+
+            // 현재 월부터 12월까지 표시
+            const currentMonth = today.getMonth() + 1;
+
+            for (let month = currentMonth; month <= 12; month++) {
+                const data = monthlyData[month];
+                if (!data) continue;
+
+                const monthName = `${month}월`;
+                const netFlow = data.income - data.expense;
+
+                html += `
+                    <div class="comparison-item">
+                        <span class="comparison-item-label">${monthName}</span>
+                        <div style="text-align: right;">
+                            <div style="font-size: 10px; color: #999;">수입: ₩${data.income.toLocaleString('ko-KR')}</div>
+                            <div style="font-size: 10px; color: #999;">지출: -₩${data.expense.toLocaleString('ko-KR')}</div>
+                            <div style="font-weight: 700; margin-top: 2px;" class="${netFlow < 0 ? 'negative' : 'positive'}">
+                                순수입: ${netFlow < 0 ? '-' : '+'}₩${Math.abs(netFlow).toLocaleString('ko-KR')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (html === '') {
+                html = '<p style="text-align: center; color: #999;">데이터가 없습니다.</p>';
+            }
+
+            document.getElementById('monthlyExpenseForecast').innerHTML = html;
+        }
+        
+        // 섹션 전환
+        function switchSection(section) {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            
+            if (section === 'dashboard') {
+                document.getElementById('dashboard-section').classList.add('active');
+            } else if (section === 'timeline') {
+                document.getElementById('timeline-section').classList.add('active');
+            } else if (section === 'compare') {
+                document.getElementById('compare-section').classList.add('active');
+            }
+            
+            event.target.closest('.nav-item').classList.add('active');
+        }
+        
+        // 초기화
+        async function initialize() {
+            console.log('🚀 앱 초기화 시작...');
+
+            // Google Sheets에서 항목 데이터 로드
+            const itemsLoaded = await loadItems();
+
+            if (itemsLoaded) {
+                console.log('✅ 모든 데이터 로드 완료, UI 업데이트 중...');
+                updateUI();
+            } else {
+                console.error('❌ 데이터 로드 실패');
+            }
+        }
+
+        // 페이지 로드 시 초기화
+        initialize();
+
+        // 매분마다 업데이트
+        setInterval(updateUI, 60000);
+    </script>
+</body>
+</html>

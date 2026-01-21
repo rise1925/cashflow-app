@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Google Credentials (보안!)
+credentials.json
+*.json.backup
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+
+# Build
+dist/
+build/
+out/
+
+# PM2
+ecosystem.config.js
+pm2.json
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Other
+.cache/
+.eslintcache
