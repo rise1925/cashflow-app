@@ -143,6 +143,38 @@ router.get('/items', async (req, res) => {
 });
 
 /**
+ * GET /api/month-detail/:month
+ * 특정 월의 상세 내역 조회 (36~80행)
+ */
+router.get('/month-detail/:month', async (req, res) => {
+    try {
+        const month = parseInt(req.params.month);
+
+        if (isNaN(month) || month < 1 || month > 12) {
+            return res.status(400).json({
+                success: false,
+                error: '유효한 월 번호를 입력하세요 (1~12)'
+            });
+        }
+
+        const details = await googleSheets.getMonthDetailData(month);
+
+        res.json({
+            success: true,
+            message: `${month}월 상세 내역 조회 성공`,
+            data: details
+        });
+    } catch (error) {
+        console.error('API 에러:', error);
+        res.status(500).json({
+            success: false,
+            error: '상세 내역 조회 실패',
+            message: error.message
+        });
+    }
+});
+
+/**
  * POST /api/calculate
  * 현재 잔고 계산
  * 

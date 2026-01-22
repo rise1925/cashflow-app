@@ -680,7 +680,18 @@
                 <!-- 3. 예측 잔고 섹션 -->
                 <div class="card">
                     <div class="card-header" style="margin-bottom: 14px;" id="forecastBalanceHeader">📊 예측 잔고 (연간)</div>
-                    <div id="monthlyChart" style="padding: 10px 0;"></div>
+
+                    <!-- 4:1 레이아웃 -->
+                    <div style="display: grid; grid-template-columns: 4fr 1fr; gap: 16px;">
+                        <!-- 좌측: 월별 차트 -->
+                        <div id="monthlyChart" style="padding: 10px 0;"></div>
+
+                        <!-- 우측: 매월 필요한 잔고 -->
+                        <div style="border-left: 1px solid #e5e7eb; padding-left: 12px;">
+                            <div style="font-size: 10px; font-weight: 600; color: #666; margin-bottom: 8px; text-align: center;">필요 잔고</div>
+                            <div id="monthlyRequiredBalance" style="font-size: 9px;"></div>
+                        </div>
+                    </div>
 
                     <!-- 연간 합계 -->
                     <div style="margin-top: 20px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
@@ -1550,93 +1561,91 @@
             document.getElementById('monthEndModal').classList.remove('active');
         }
 
-        // 월별 차트 렌더링
+        // 월별 차트 렌더링 (백엔드 데이터 사용)
         function renderMonthlyChart() {
-            let html = '';
-            let maxValue = 0;
+            console.log('📊 월별 차트 렌더링 시작...');
 
-            // 각 월별 수입/지출 계산
-            const monthlyData = [];
+            // monthlyData는 loadMonthlyData()에서 로드된 백엔드 데이터
+            if (!monthlyData || Object.keys(monthlyData).length === 0) {
+                console.warn('⚠️ 월별 데이터가 아직 로드되지 않았습니다');
+                document.getElementById('monthlyChart').innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">데이터 로딩 중...</div>';
+                return;
+            }
+
+            let chartHtml = '';
+            let requiredBalanceHtml = '';
+            let maxValue = 0;
             let yearTotalIncome = 0;
             let yearTotalExpense = 0;
 
+            // 최대값 찾기 및 연간 합계 계산
             for (let month = 1; month <= 12; month++) {
-                const monthStart = new Date(today.getFullYear(), month - 1, 1);
-                const monthEnd = new Date(today.getFullYear(), month, 0);
-
-                let monthIncome = 0;
-                let monthExpense = 0;
-
-                items.forEach(item => {
-                    const freq = item.frequency ? item.frequency.toLowerCase().trim() : '';
-
-                    // 매주 항목 처리
-                    let monthlyOccurrences = 1;
-                    if (freq.includes('매주')) {
-                        const dayNames = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
-                        const dayMatch = freq.match(/(월|화|수|목|금|토|일)/);
-                        if (dayMatch) {
-                            const targetDayOfWeek = dayNames[dayMatch[1]];
-                            let count = 0;
-                            for (let d = new Date(monthStart); d <= monthEnd; d.setDate(d.getDate() + 1)) {
-                                if (d.getDay() === targetDayOfWeek) count++;
-                            }
-                            monthlyOccurrences = count;
-                        }
-                    }
-
-                    const expensePerOccurrence = freq.includes('매주') ? Math.round(item.expense / monthlyOccurrences) : item.expense;
-                    const incomePerOccurrence = freq.includes('매주') ? Math.round(item.income / monthlyOccurrences) : item.income;
-
-                    const count = calculateOccurrences(item.frequency, monthStart, monthEnd);
-                    if (count > 0) {
-                        monthIncome += incomePerOccurrence * count;
-                        monthExpense += expensePerOccurrence * count;
-                    }
-                });
-
-                yearTotalIncome += monthIncome;
-                yearTotalExpense += monthExpense;
-
-                monthlyData.push({ month, monthIncome, monthExpense });
-                maxValue = Math.max(maxValue, monthIncome, monthExpense);
+                const data = monthlyData[month];
+                if (data) {
+                    maxValue = Math.max(maxValue, data.income, data.expense);
+                    yearTotalIncome += data.income;
+                    yearTotalExpense += data.expense;
+                    console.log(`  ${month}월: 수입 ₩${data.income.toLocaleString()}, 지출 ₩${data.expense.toLocaleString()}`);
+                }
             }
 
-            // 차트 렌더링 (수입과 지출을 각각 막대로)
-            monthlyData.forEach(data => {
-                const incomePercent = maxValue > 0 ? (data.monthIncome / maxValue) * 100 : 0;
-                const expensePercent = maxValue > 0 ? (data.monthExpense / maxValue) * 100 : 0;
+            console.log(`✅ 연간 합계: 수입 ₩${yearTotalIncome.toLocaleString()}, 지출 ₩${yearTotalExpense.toLocaleString()}`);
 
-                html += `
-                    <div style="margin-bottom: 12px; cursor: pointer;" onclick="showMonthDetail(${data.month})">
-                        <div style="font-size: 11px; font-weight: 600; color: #666; margin-bottom: 4px;">${data.month}${t('month')}</div>
+            // 차트 및 필요 잔고 렌더링
+            for (let month = 1; month <= 12; month++) {
+                const data = monthlyData[month];
+                if (!data) continue;
+
+                const incomePercent = maxValue > 0 ? (data.income / maxValue) * 100 : 0;
+                const expensePercent = maxValue > 0 ? (data.expense / maxValue) * 100 : 0;
+
+                // 필요 잔고 계산 (총수입 - 총지출)
+                const requiredBalance = data.income - data.expense;
+
+                // 좌측 차트
+                chartHtml += `
+                    <div style="margin-bottom: 12px; cursor: pointer;" onclick="showMonthDetail(${month})">
+                        <div style="font-size: 11px; font-weight: 600; color: #666; margin-bottom: 4px;">${month}${t('month')}</div>
 
                         <!-- 수입 바 -->
                         <div style="display: flex; align-items: center; margin-bottom: 2px;">
                             <div style="width: 40px; font-size: 9px; color: #10b981;">${t('income')}</div>
-                            <div style="flex: 1; height: 16px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden;">
+                            <div style="flex: 1; height: 20px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden; position: relative;">
                                 <div style="height: 100%; width: ${incomePercent}%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 4px;"></div>
-                            </div>
-                            <div style="width: 80px; font-size: 10px; font-weight: 600; color: #10b981; text-align: right;">
-                                +₩${(data.monthIncome / 10000).toFixed(0)}${currentLang === 'ko' ? '만' : 'k'}
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10px; font-weight: 700; color: ${incomePercent > 50 ? '#fff' : '#10b981'}; text-shadow: 0 0 2px rgba(0,0,0,0.3);">
+                                    +₩${(data.income / 10000).toFixed(0)}${currentLang === 'ko' ? '만' : 'k'}
+                                </div>
                             </div>
                         </div>
 
                         <!-- 지출 바 -->
                         <div style="display: flex; align-items: center;">
                             <div style="width: 40px; font-size: 9px; color: #ef4444;">${t('expense')}</div>
-                            <div style="flex: 1; height: 16px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden;">
+                            <div style="flex: 1; height: 20px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden; position: relative;">
                                 <div style="height: 100%; width: ${expensePercent}%; background: linear-gradient(90deg, #ef4444, #dc2626); border-radius: 4px;"></div>
-                            </div>
-                            <div style="width: 80px; font-size: 10px; font-weight: 600; color: #ef4444; text-align: right;">
-                                -₩${(data.monthExpense / 10000).toFixed(0)}${currentLang === 'ko' ? '만' : 'k'}
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10px; font-weight: 700; color: ${expensePercent > 50 ? '#fff' : '#ef4444'}; text-shadow: 0 0 2px rgba(0,0,0,0.3);">
+                                    -₩${(data.expense / 10000).toFixed(0)}${currentLang === 'ko' ? '만' : 'k'}
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
-            });
 
-            document.getElementById('monthlyChart').innerHTML = html;
+                // 우측 필요 잔고 (좌측 차트와 높이 맞춤)
+                const balanceColor = requiredBalance >= 0 ? '#10b981' : '#ef4444';
+                const balanceSign = requiredBalance >= 0 ? '+' : '';
+                requiredBalanceHtml += `
+                    <div style="margin-bottom: 12px; text-align: center; padding: 0; display: flex; flex-direction: column; justify-content: center; height: 63px;">
+                        <div style="background: #f9fafb; border-radius: 6px; padding: 8px 6px;">
+                            <div style="font-size: 9px; color: #999; margin-bottom: 4px;">${month}월</div>
+                            <div style="font-size: 10px; font-weight: 700; color: ${balanceColor};">${balanceSign}₩${Math.abs(requiredBalance / 10000).toFixed(0)}만</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('monthlyChart').innerHTML = chartHtml;
+            document.getElementById('monthlyRequiredBalance').innerHTML = requiredBalanceHtml;
 
             // 연간 합계 업데이트
             const yearNet = yearTotalIncome - yearTotalExpense;
@@ -1648,85 +1657,87 @@
             yearNetEl.style.color = yearNet < 0 ? '#ef4444' : '#10b981';
         }
 
-        // 월별 상세 내역 모달
-        function showMonthDetail(month) {
-            const monthStart = new Date(today.getFullYear(), month - 1, 1);
-            const monthEnd = new Date(today.getFullYear(), month, 0);
-
-            let totalIncome = 0;
-            let totalExpense = 0;
-            const expenseItems = [];
-            const incomeItems = [];
-
-            items.forEach(item => {
-                const count = calculateOccurrences(item.frequency, monthStart, monthEnd);
-                if (count > 0) {
-                    if (item.expense > 0) {
-                        totalExpense += item.expense * count;
-                        expenseItems.push({
-                            name: item.itemName,
-                            frequency: item.frequency,
-                            count: count,
-                            amount: item.expense * count
-                        });
-                    }
-                    if (item.income > 0) {
-                        totalIncome += item.income * count;
-                        incomeItems.push({
-                            name: item.itemName,
-                            frequency: item.frequency,
-                            count: count,
-                            amount: item.income * count
-                        });
-                    }
-                }
-            });
-
-            const netIncome = totalIncome - totalExpense;
-
+        // 월별 상세 내역 모달 (Google Sheets 36~80행 데이터)
+        async function showMonthDetail(month) {
             document.getElementById('monthDetailTitle').textContent = `📋 ${month}월 상세 내역`;
-
-            let html = '';
-            html += `<div style="text-align: center; margin-bottom: 20px;">`;
-            html += `<div style="font-size: 14px; color: #999;">수입: <span style="color: #10b981; font-weight: 700;">+₩${totalIncome.toLocaleString('ko-KR')}</span></div>`;
-            html += `<div style="font-size: 14px; color: #999; margin-top: 4px;">지출: <span style="color: #ef4444; font-weight: 700;">-₩${totalExpense.toLocaleString('ko-KR')}</span></div>`;
-            html += `<div style="font-size: 18px; font-weight: 700; margin-top: 8px; color: ${netIncome < 0 ? '#ef4444' : '#10b981'};">`;
-            html += `순수입: ${netIncome < 0 ? '' : '+'}₩${netIncome.toLocaleString('ko-KR')}`;
-            html += `</div></div>`;
-
-            // 지출 항목
-            if (expenseItems.length > 0) {
-                expenseItems.sort((a, b) => b.amount - a.amount); // 큰 순서대로
-                html += '<div class="detail-section">';
-                html += '<div class="detail-section-title">📉 지출 항목</div>';
-                expenseItems.forEach(item => {
-                    html += `
-                        <div class="detail-item">
-                            <span class="detail-item-name">${item.name} × ${item.count}회</span>
-                            <span class="detail-item-value negative">-₩${item.amount.toLocaleString('ko-KR')}</span>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-            }
-
-            // 수입 항목
-            if (incomeItems.length > 0) {
-                html += '<div class="detail-section">';
-                html += '<div class="detail-section-title">📈 수입 항목</div>';
-                incomeItems.forEach(item => {
-                    html += `
-                        <div class="detail-item">
-                            <span class="detail-item-name">${item.name} × ${item.count}회</span>
-                            <span class="detail-item-value positive">+₩${item.amount.toLocaleString('ko-KR')}</span>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-            }
-
-            document.getElementById('monthDetailContent').innerHTML = html;
+            document.getElementById('monthDetailContent').innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">로딩 중...</div>';
             document.getElementById('monthDetailModal').classList.add('active');
+
+            try {
+                const response = await fetch(`/api/month-detail/${month}`);
+                const result = await response.json();
+
+                if (!result.success || !result.data) {
+                    throw new Error(result.error || '데이터 로드 실패');
+                }
+
+                const details = result.data;
+                let totalIncome = 0;
+                let totalExpense = 0;
+
+                // 합계 계산
+                details.forEach(row => {
+                    totalIncome += row.income;
+                    totalExpense += row.expense;
+                });
+
+                const netIncome = totalIncome - totalExpense;
+
+                // HTML 렌더링
+                let html = '';
+                html += `<div style="text-align: center; margin-bottom: 20px;">`;
+                html += `<div style="font-size: 14px; color: #999;">수입: <span style="color: #10b981; font-weight: 700;">+₩${totalIncome.toLocaleString('ko-KR')}</span></div>`;
+                html += `<div style="font-size: 14px; color: #999; margin-top: 4px;">지출: <span style="color: #ef4444; font-weight: 700;">-₩${totalExpense.toLocaleString('ko-KR')}</span></div>`;
+                html += `<div style="font-size: 18px; font-weight: 700; margin-top: 8px; color: ${netIncome < 0 ? '#ef4444' : '#10b981'};">`;
+                html += `순수입: ${netIncome < 0 ? '' : '+'}₩${netIncome.toLocaleString('ko-KR')}`;
+                html += `</div></div>`;
+
+                // 상세 내역 테이블
+                html += '<div class="detail-section">';
+                html += '<div class="detail-section-title">📋 상세 내역</div>';
+                html += '<div style="max-height: 400px; overflow-y: auto;">';
+
+                details.forEach(row => {
+                    if (row.date || row.item || row.expense > 0 || row.income > 0) {
+                        const rowColor = row.expense > 0 ? '#fef2f2' : (row.income > 0 ? '#f0fdf4' : '#f9fafb');
+
+                        // 카테고리 뱃지 색상
+                        let categoryBadge = '';
+                        if (row.category) {
+                            const badgeColor = row.category.includes('현금') ? '#10b981' :
+                                             row.category.includes('삼성') ? '#667eea' :
+                                             row.category.includes('현대') ? '#f59e0b' : '#6b7280';
+                            categoryBadge = `<span style="font-size: 9px; padding: 2px 6px; background: ${badgeColor}; color: white; border-radius: 4px; margin-right: 4px;">${row.category}</span>`;
+                        }
+
+                        html += `
+                            <div class="detail-item" style="background: ${rowColor}; padding: 10px; margin-bottom: 6px; border-radius: 6px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="flex: 1;">
+                                        <div style="font-size: 11px; font-weight: 600; color: #333; margin-bottom: 4px;">
+                                            ${row.date ? `${row.date}일` : ''} ${categoryBadge}${row.item || '-'}
+                                        </div>
+                                        <div style="font-size: 10px; color: #666;">
+                                            ${row.expense > 0 ? `<span style="color: #ef4444; font-weight: 600;">-₩${row.expense.toLocaleString('ko-KR')}</span>` : ''}
+                                            ${row.income > 0 ? `<span style="color: #10b981; font-weight: 600;">+₩${row.income.toLocaleString('ko-KR')}</span>` : ''}
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 10px; color: #999; text-align: right; margin-left: 12px;">
+                                        잔고<br>₩${row.balance.toLocaleString('ko-KR')}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+
+                html += '</div></div>';
+
+                document.getElementById('monthDetailContent').innerHTML = html;
+            } catch (error) {
+                console.error('❌ 월별 상세 내역 로드 실패:', error);
+                document.getElementById('monthDetailContent').innerHTML = '<div style="text-align: center; padding: 40px; color: #ef4444;">데이터 로드 실패</div>';
+            }
         }
 
         function closeMonthDetailModal() {
@@ -1938,14 +1949,22 @@
         async function initialize() {
             console.log('🚀 앱 초기화 시작...');
 
-            // Google Sheets에서 항목 데이터 로드
-            const itemsLoaded = await loadItems();
+            // Google Sheets에서 월별 데이터 로드 (병렬)
+            const monthlyDataLoaded = loadMonthlyData();
 
-            if (itemsLoaded) {
+            // Google Sheets에서 항목 데이터 로드 (병렬)
+            const itemsLoaded = loadItems();
+
+            // 두 데이터가 모두 로드될 때까지 대기
+            const [monthlySuccess, itemsSuccess] = await Promise.all([monthlyDataLoaded, itemsLoaded]);
+
+            if (monthlySuccess && itemsSuccess) {
                 console.log('✅ 모든 데이터 로드 완료, UI 업데이트 중...');
                 updateUI();
             } else {
                 console.error('❌ 데이터 로드 실패');
+                console.error('  월별 데이터:', monthlySuccess ? '성공' : '실패');
+                console.error('  항목 데이터:', itemsSuccess ? '성공' : '실패');
             }
         }
 
