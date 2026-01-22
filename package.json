@@ -4,7 +4,7 @@
   "description": "일일 현금흐름 추적 앱 with Google Sheets 연동",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node ./web.js",
     "dev": "nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
