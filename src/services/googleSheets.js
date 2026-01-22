@@ -1,4 +1,5 @@
 const { GoogleSpreadsheet } = require('google-spreadsheet');
+const config = require('../../config');
 
 class GoogleSheetsService {
     constructor() {
@@ -13,24 +14,31 @@ class GoogleSheetsService {
         try {
             if (this.initialized) return;
 
-            // 환경변수 확인
-            if (!process.env.GOOGLE_SHEET_ID) {
-                throw new Error('GOOGLE_SHEET_ID 환경변수가 설정되지 않았습니다.');
+            // 설정 확인
+            if (!config.GOOGLE_SHEET_ID) {
+                throw new Error('GOOGLE_SHEET_ID가 설정되지 않았습니다.');
             }
-            if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
-                throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL 환경변수가 설정되지 않았습니다.');
+            if (!config.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
+                throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL이 설정되지 않았습니다.');
             }
-            if (!process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY) {
-                throw new Error('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY 환경변수가 설정되지 않았습니다.');
+            if (!config.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY) {
+                throw new Error('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY가 설정되지 않았습니다.');
             }
+
+            console.log('🔑 Google Sheets 인증 시작...');
+            console.log('  Sheet ID:', config.GOOGLE_SHEET_ID);
+            console.log('  Email:', config.GOOGLE_SERVICE_ACCOUNT_EMAIL);
 
             // google-spreadsheet 3.x 방식
-            this.doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID);
+            this.doc = new GoogleSpreadsheet(config.GOOGLE_SHEET_ID);
 
-            // 서비스 계정으로 인증 (환경변수 사용)
+            // Private Key 처리 (개행 문자 복원)
+            const privateKey = config.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n');
+
+            // 서비스 계정으로 인증
             await this.doc.useServiceAccountAuth({
-                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-                private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n')
+                client_email: config.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                private_key: privateKey
             });
 
             await this.doc.loadInfo();

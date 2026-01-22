@@ -1,10 +1,23 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+const path = require('path');
+
+// .env 파일 로드 시도 (선택사항)
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+// 설정 파일 로드
+const config = require('./config');
+
+// 설정 확인
+console.log('🔍 설정 확인:');
+console.log('  GOOGLE_SHEET_ID:', config.GOOGLE_SHEET_ID ? '✅ 설정됨' : '❌ 없음');
+console.log('  GOOGLE_SERVICE_ACCOUNT_EMAIL:', config.GOOGLE_SERVICE_ACCOUNT_EMAIL ? '✅ 설정됨' : '❌ 없음');
+console.log('  GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY:', config.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY ? `✅ 설정됨 (길이: ${config.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.length})` : '❌ 없음');
+
 const apiRoutes = require('./src/routes/api');
 
 const app = express();
-const PORT = process.env.PORT || 8001;
+const PORT = config.PORT;
 
 // 미들웨어
 app.use(cors());
