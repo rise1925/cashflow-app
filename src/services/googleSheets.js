@@ -1,6 +1,4 @@
 const { GoogleSpreadsheet } = require('google-spreadsheet');
-const fs = require('fs');
-const path = require('path');
 
 class GoogleSheetsService {
     constructor() {
@@ -15,25 +13,24 @@ class GoogleSheetsService {
         try {
             if (this.initialized) return;
 
-            const credentialsPath = path.join(
-                __dirname,
-                '../../',
-                process.env.GOOGLE_CREDENTIALS_PATH || './credentials.json'
-            );
-
-            if (!fs.existsSync(credentialsPath)) {
-                throw new Error(`credentials.json을 찾을 수 없습니다: ${credentialsPath}`);
+            // 환경변수 확인
+            if (!process.env.GOOGLE_SHEET_ID) {
+                throw new Error('GOOGLE_SHEET_ID 환경변수가 설정되지 않았습니다.');
             }
-
-            const credentials = require(credentialsPath);
+            if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL) {
+                throw new Error('GOOGLE_SERVICE_ACCOUNT_EMAIL 환경변수가 설정되지 않았습니다.');
+            }
+            if (!process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY) {
+                throw new Error('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY 환경변수가 설정되지 않았습니다.');
+            }
 
             // google-spreadsheet 3.x 방식
             this.doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID);
 
-            // 서비스 계정으로 인증
+            // 서비스 계정으로 인증 (환경변수 사용)
             await this.doc.useServiceAccountAuth({
-                client_email: credentials.client_email,
-                private_key: credentials.private_key
+                client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+                private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, '\n')
             });
 
             await this.doc.loadInfo();
