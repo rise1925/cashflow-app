@@ -1,5 +1,4 @@
 const { GoogleSpreadsheet } = require('google-spreadsheet');
-const { JWT } = require('google-auth-library');
 const fs = require('fs');
 const path = require('path');
 
@@ -17,7 +16,7 @@ class GoogleSheetsService {
             if (this.initialized) return;
 
             const credentialsPath = path.join(
-                __dirname, 
+                __dirname,
                 '../../',
                 process.env.GOOGLE_CREDENTIALS_PATH || './credentials.json'
             );
@@ -27,20 +26,15 @@ class GoogleSheetsService {
             }
 
             const credentials = require(credentialsPath);
-            
-            const auth = new JWT({
-                email: credentials.client_email,
-                key: credentials.private_key,
-                scopes: [
-                    'https://www.googleapis.com/auth/spreadsheets',
-                    'https://www.googleapis.com/auth/drive'
-                ]
-            });
 
-            this.doc = new GoogleSpreadsheet(
-                process.env.GOOGLE_SHEET_ID,
-                auth
-            );
+            // google-spreadsheet 3.x 방식
+            this.doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_ID);
+
+            // 서비스 계정으로 인증
+            await this.doc.useServiceAccountAuth({
+                client_email: credentials.client_email,
+                private_key: credentials.private_key
+            });
 
             await this.doc.loadInfo();
             this.initialized = true;

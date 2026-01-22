@@ -832,22 +832,47 @@
             }
         };
 
+        // 결제수단 번역 함수
+        function translatePaymentMethod(paymentType) {
+            if (currentLang === 'ko') return paymentType;
+
+            const paymentMap = {
+                '현금': 'Dinheiro',
+                '삼성카드': 'Samsung Card',
+                '현대카드': 'Hyundai Card'
+            };
+
+            return paymentMap[paymentType] || paymentType;
+        }
+
         // 항목명 번역 함수
         function translateItemName(itemName) {
             if (currentLang === 'ko') return itemName;
 
-            // 결제수단 제거 (현금, 삼성카드, 현대카드)
-            let cleanName = itemName.replace(/현금$/, '').replace(/삼성카드$/, '').replace(/현대카드$/, '');
+            let translatedName = itemName;
+
+            // 결제수단 분리 및 번역
+            let paymentSuffix = '';
+            if (itemName.endsWith('현금')) {
+                translatedName = itemName.replace(/현금$/, '');
+                paymentSuffix = ' (Dinheiro)';
+            } else if (itemName.endsWith('삼성카드')) {
+                translatedName = itemName.replace(/삼성카드$/, '');
+                paymentSuffix = ' (Samsung Card)';
+            } else if (itemName.endsWith('현대카드')) {
+                translatedName = itemName.replace(/현대카드$/, '');
+                paymentSuffix = ' (Hyundai Card)';
+            }
 
             // 번역 사전에서 찾기
-            if (translations.pt.items[cleanName]) {
-                return translations.pt.items[cleanName];
+            if (translations.pt.items[translatedName]) {
+                return translations.pt.items[translatedName] + paymentSuffix;
             }
 
             // 부분 매칭 (예: "호베르따 1월 수입" -> "호베르따" 부분만)
             for (let key in translations.pt.items) {
-                if (cleanName.includes(key)) {
-                    return cleanName.replace(key, translations.pt.items[key]);
+                if (translatedName.includes(key)) {
+                    return translatedName.replace(key, translations.pt.items[key]) + paymentSuffix;
                 }
             }
 
@@ -1308,7 +1333,8 @@
                             if (event.paymentType.includes('삼성')) badgeColor = '#667eea';
                             else if (event.paymentType.includes('현대')) badgeColor = '#f093fb';
 
-                            paymentBadge = `<span style="font-size: 9px; padding: 2px 6px; background: ${badgeColor}; color: white; border-radius: 4px; margin-left: 6px;">${event.paymentType}</span>`;
+                            const translatedPaymentType = translatePaymentMethod(event.paymentType);
+                            paymentBadge = `<span style="font-size: 9px; padding: 2px 6px; background: ${badgeColor}; color: white; border-radius: 4px; margin-left: 6px;">${translatedPaymentType}</span>`;
                         }
 
                         html += `
