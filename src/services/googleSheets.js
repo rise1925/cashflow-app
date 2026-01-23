@@ -75,8 +75,8 @@ class GoogleSheetsService {
                 };
             };
 
-            // 81행(Total) 로드: E81:AM81
-            await sheet.loadCells('E81:AM81');
+            // 80~81행 로드: E80:AM81 (80행=월말잔고, 81행=Total)
+            await sheet.loadCells('E80:AM81');
 
             const monthlyData = {};
 
@@ -85,20 +85,25 @@ class GoogleSheetsService {
                 const monthCode = String(month).padStart(2, '0');
                 const cols = getMonthColumns(month);
 
-                // 81행 (0-indexed: 80)
+                // 81행 (0-indexed: 80) - Total
                 const expenseCell = sheet.getCell(80, cols.expense);
                 const incomeCell = sheet.getCell(80, cols.income);
 
+                // 80행 (0-indexed: 79) - 월말 잔고
+                const balanceCell = sheet.getCell(79, cols.balance);
+
                 const monthExpense = Math.abs(this._parseNumber(expenseCell.value));
                 const monthIncome = this._parseNumber(incomeCell.value);
+                const monthEndBalance = this._parseNumber(balanceCell.value);
 
                 monthlyData[monthCode] = {
                     month: this._getMonthName(monthCode),
                     income: monthIncome,
-                    expense: monthExpense
+                    expense: monthExpense,
+                    balance: monthEndBalance
                 };
 
-                console.log(`✅ ${monthCode}월 Total(81행): 수입=₩${monthIncome.toLocaleString()}, 지출=₩${monthExpense.toLocaleString()}`);
+                console.log(`✅ ${monthCode}월: 수입=₩${monthIncome.toLocaleString()}, 지출=₩${monthExpense.toLocaleString()}, 월말잔고=₩${monthEndBalance.toLocaleString()}`);
             }
 
             // 여행 수익 추가 (B15:16, F/I/L.../AM 15:16)
@@ -223,7 +228,8 @@ class GoogleSheetsService {
 
     /**
      * 오늘 현재 잔고 가져오기
-     * 예: 1월 22일 → G22 (1월 잔고 열의 22행)
+     * B36:B80 범위에서 오늘 날짜를 찾아서 해당 행의 잔고 반환
+     * 예: 1월 22일 → B70에서 22를 찾아 G70의 잔고 반환
      */
     async getTodayBalance() {
         try {
@@ -250,19 +256,80 @@ class GoogleSheetsService {
 
             const cols = getMonthColumns(currentMonth);
 
-            // 해당 날짜의 잔고 셀 로드 (예: G22)
-            // 36행부터 시작이므로 실제 날짜 행 = 35 + dayOfMonth
-            const rowIndex = 35 + dayOfMonth; // 0-indexed
+            // B36:AN80 범위 로드 (B열=날짜)
+            await sheet.loadCells('B36:AN80');
 
-            await sheet.loadCells(`A${rowIndex + 1}:AN${rowIndex + 1}`);
+            // 36~80행에서 B열의 날짜가 오늘 날짜와 일치하는 행 찾기
+            for (let row = 35; row < 80; row++) {
+                const dateCell = sheet.getCell(row, 1);
+                const rawValue = dateCell.value;
 
-            const balanceCell = sheet.getCell(rowIndex, cols.balance);
-            const balance = this._parseNumber(balanceCell.value);
+                let cellDay = null;
 
-            console.log(`✅ ${currentMonth}월 ${dayOfMonth}일 잔고 (행 ${rowIndex + 1}, 열 ${cols.balance}): ₩${balance.toLocaleString()}`);
-            return balance;
+                if (rawValue instanceof Date) {
+                    cellDay = rawValue.getDate();
+                } else {
+                    const parsed = parseInt(String(rawValue).replace(/[^0-9]/g, ''), 10);
+                    cellDay = isNaN(parsed) ? null : parsed;
+                }
+                 
+                if (cellDay === dayOfMonth) {
+                    const balanceCell = sheet.getCell(row, cols.balance);
+                    const balance = this._parseNumber(balanceCell.value);
+
+                    console.log(`✅ 잔고: ₩${balance.toLocaleString()}`);
+                    return balance;
+                }
+            }
+
+
+            // 날짜를 찾지 못한 경우
+            console.warn(`⚠️ ${currentMonth}월 ${dayOfMonth}일 데이터를 찾을 수 없습니다.`);
+            return 0;
         } catch (error) {
             console.error('❌ 오늘 잔고 조회 실패:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * 이번달 월말 예상 잔고 가져오기 (80번째 행)
+     * 예: 1월이면 G80, 2월이면 J80
+     */
+    async getMonthEndBalance() {
+        try {
+            await this.initialize();
+
+            const sheet = this.doc.sheetsByIndex[0];
+
+            // 현재 월
+            const today = new Date();
+            const currentMonth = today.getMonth() + 1;
+
+            console.log(`📅 현재 월: ${currentMonth}월`);
+
+            // 열 매핑
+            const getMonthColumns = (monthNum) => {
+                const baseCol = 4 + (monthNum - 1) * 3;
+                return {
+                    expense: baseCol,
+                    income: baseCol + 1,
+                    balance: baseCol + 2
+                };
+            };
+
+            const cols = getMonthColumns(currentMonth);
+
+            // 80행 로드 (0-indexed: 79)
+            await sheet.loadCells('E80:AM80');
+
+            const balanceCell = sheet.getCell(79, cols.balance);
+            const monthEndBalance = this._parseNumber(balanceCell.value);
+
+            console.log(`✅ ${currentMonth}월 월말 예상 잔고 (80행): ₩${monthEndBalance.toLocaleString()}`);
+            return monthEndBalance;
+        } catch (error) {
+            console.error('❌ 월말 예상 잔고 조회 실패:', error.message);
             throw error;
         }
     }

@@ -663,7 +663,11 @@
                         <div>
                             <div style="text-align: left;">
                                 <div style="font-size: 11px; color: #999; margin-bottom: 6px;" id="balanceDate">2025년 2월 1일 (토)</div>
-                                <div style="font-size: 28px; font-weight: 700; margin-bottom: 12px;" id="currentBalance">₩2,337,459</div>
+                                <div style="font-size: 28px; font-weight: 700; margin-bottom: 8px;" id="currentBalance">₩2,337,459</div>
+                                <!-- 월말 예상 잔고 -->
+                                <div style="font-size: 10px; color: #666; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+                                    <span style="color: #999;">이번달 예상 잔고:</span> <span style="font-weight: 700; font-size: 14px;" id="monthEndBalance">-</span>
+                                </div>
                             </div>
                         </div>
 
@@ -751,8 +755,11 @@
         // 월별 데이터 (Google Sheets에서 로드됨)
         let monthlyData = {};
 
-        // 오늘의 실제 잔고 (Google Sheets 기준날짜/금액 기반 계산)
+        // 오늘의 실제 잔고 (백엔드 API에서 로드됨)
         let todayActualBalance = null;
+
+        // 이번달 월말 예상 잔고 (백엔드 API에서 로드됨)
+        let monthEndExpectedBalance = null;
 
         // 항목 데이터 (B72:F107에서 로드됨)
         let baseDate = null;
@@ -1113,6 +1120,46 @@
             }
         }
 
+        // 백엔드에서 오늘 잔고 로드
+        async function loadTodayBalance() {
+            try {
+                const response = await fetch('/api/today-balance');
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    todayActualBalance = result.data.balance;
+                    console.log('✅ 오늘 잔고 로드 성공:', todayActualBalance);
+                    return true;
+                } else {
+                    console.error('❌ 오늘 잔고 로드 실패:', result.error);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ 잔고 API 호출 실패:', error);
+                return false;
+            }
+        }
+
+        // 백엔드에서 월말 예상 잔고 로드
+        async function loadMonthEndBalance() {
+            try {
+                const response = await fetch('/api/month-end-balance');
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    monthEndExpectedBalance = result.data.balance;
+                    console.log('✅ 월말 예상 잔고 로드 성공:', monthEndExpectedBalance);
+                    return true;
+                } else {
+                    console.error('❌ 월말 예상 잔고 로드 실패:', result.error);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ 월말 예상 잔고 API 호출 실패:', error);
+                return false;
+            }
+        }
+
         // 일일 평균 지출
         function getDailyAverage(month) {
             if (!monthlyData[month]) return 0;
@@ -1140,9 +1187,9 @@
         
         // 현재 잔고
         function getCurrentBalance() {
-            // items 데이터가 로드되었으면 프론트엔드에서 직접 계산
-            if (baseDate && items && items.length > 0) {
-                return calculateTodayBalance();
+            // 백엔드에서 로드한 실제 잔고가 있으면 사용
+            if (todayActualBalance !== null) {
+                return todayActualBalance;
             }
 
             // 데이터가 없으면 0 반환
@@ -1195,6 +1242,14 @@
             if (currentBalanceEl) {
                 currentBalanceEl.textContent = (balance < 0 ? '-' : '') + '₩' + Math.abs(balance).toLocaleString('ko-KR');
                 currentBalanceEl.className = balance < 0 ? 'negative' : 'positive';
+            }
+
+            // 월말 예상 잔고
+            const monthEndBalanceEl = document.getElementById('monthEndBalance');
+            if (monthEndBalanceEl && monthEndExpectedBalance !== null) {
+                const balanceColor = monthEndExpectedBalance < 0 ? '#ef4444' : '#10b981';
+                monthEndBalanceEl.textContent = (monthEndExpectedBalance < 0 ? '-' : '') + '₩' + Math.abs(monthEndExpectedBalance).toLocaleString('ko-KR');
+                monthEndBalanceEl.style.color = balanceColor;
             }
 
             // 월별 차트
@@ -1582,10 +1637,10 @@
             for (let month = 1; month <= 12; month++) {
                 const data = monthlyData[month];
                 if (data) {
-                    maxValue = Math.max(maxValue, data.income, data.expense);
+                    maxValue = Math.max(maxValue, data.income, data.expense, Math.abs(data.balance));
                     yearTotalIncome += data.income;
                     yearTotalExpense += data.expense;
-                    console.log(`  ${month}월: 수입 ₩${data.income.toLocaleString()}, 지출 ₩${data.expense.toLocaleString()}`);
+                    console.log(`  ${month}월: 수입 ₩${data.income.toLocaleString()}, 지출 ₩${data.expense.toLocaleString()}, 잔고 ₩${data.balance.toLocaleString()}`);
                 }
             }
 
@@ -1598,9 +1653,14 @@
 
                 const incomePercent = maxValue > 0 ? (data.income / maxValue) * 100 : 0;
                 const expensePercent = maxValue > 0 ? (data.expense / maxValue) * 100 : 0;
+                const balancePercent = maxValue > 0 ? (Math.abs(data.balance) / maxValue) * 100 : 0;
 
                 // 필요 잔고 계산 (총수입 - 총지출)
                 const requiredBalance = data.income - data.expense;
+
+                // 월말 잔고 색상 (양수/음수에 따라)
+                const monthEndBalanceColor = data.balance >= 0 ? '#3b82f6' : '#f59e0b';
+                const monthEndBalanceSign = data.balance >= 0 ? '+' : '-';
 
                 // 좌측 차트
                 chartHtml += `
@@ -1610,32 +1670,43 @@
                         <!-- 수입 바 -->
                         <div style="display: flex; align-items: center; margin-bottom: 2px;">
                             <div style="width: 40px; font-size: 9px; color: #10b981;">${t('income')}</div>
-                            <div style="flex: 1; height: 20px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden; position: relative;">
+                            <div style="flex: 1; height: 18px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden; position: relative;">
                                 <div style="height: 100%; width: ${incomePercent}%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 4px;"></div>
-                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10px; font-weight: 700; color: ${incomePercent > 50 ? '#fff' : '#10b981'}; text-shadow: 0 0 2px rgba(0,0,0,0.3);">
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 9px; font-weight: 700; color: ${incomePercent > 50 ? '#fff' : '#10b981'}; text-shadow: 0 0 2px rgba(0,0,0,0.3);">
                                     +₩${(data.income / 10000).toFixed(0)}${currentLang === 'ko' ? '만' : 'k'}
                                 </div>
                             </div>
                         </div>
 
                         <!-- 지출 바 -->
-                        <div style="display: flex; align-items: center;">
+                        <div style="display: flex; align-items: center; margin-bottom: 2px;">
                             <div style="width: 40px; font-size: 9px; color: #ef4444;">${t('expense')}</div>
-                            <div style="flex: 1; height: 20px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden; position: relative;">
+                            <div style="flex: 1; height: 18px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden; position: relative;">
                                 <div style="height: 100%; width: ${expensePercent}%; background: linear-gradient(90deg, #ef4444, #dc2626); border-radius: 4px;"></div>
-                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10px; font-weight: 700; color: ${expensePercent > 50 ? '#fff' : '#ef4444'}; text-shadow: 0 0 2px rgba(0,0,0,0.3);">
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 9px; font-weight: 700; color: ${expensePercent > 50 ? '#fff' : '#ef4444'}; text-shadow: 0 0 2px rgba(0,0,0,0.3);">
                                     -₩${(data.expense / 10000).toFixed(0)}${currentLang === 'ko' ? '만' : 'k'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 잔고 바 -->
+                        <div style="display: flex; align-items: center;">
+                            <div style="width: 40px; font-size: 9px; color: ${monthEndBalanceColor};">잔고</div>
+                            <div style="flex: 1; height: 18px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden; position: relative;">
+                                <div style="height: 100%; width: ${balancePercent}%; background: linear-gradient(90deg, ${monthEndBalanceColor}, ${monthEndBalanceColor}dd); border-radius: 4px;"></div>
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 9px; font-weight: 700; color: ${balancePercent > 50 ? '#fff' : monthEndBalanceColor}; text-shadow: 0 0 2px rgba(0,0,0,0.3);">
+                                    ${monthEndBalanceSign}₩${(Math.abs(data.balance) / 10000).toFixed(0)}${currentLang === 'ko' ? '만' : 'k'}
                                 </div>
                             </div>
                         </div>
                     </div>
                 `;
 
-                // 우측 필요 잔고 (좌측 차트와 높이 맞춤)
+                // 우측 필요 잔고 (좌측 차트와 높이 맞춤 - 3개 바 높이: 18*3 + 2*2 + 16(제목+여백) = 74px)
                 const balanceColor = requiredBalance >= 0 ? '#10b981' : '#ef4444';
                 const balanceSign = requiredBalance >= 0 ? '+' : '';
                 requiredBalanceHtml += `
-                    <div style="margin-bottom: 12px; text-align: center; padding: 0; display: flex; flex-direction: column; justify-content: center; height: 63px;">
+                    <div style="margin-bottom: 12px; text-align: center; padding: 0; display: flex; flex-direction: column; justify-content: center; height: 74px;">
                         <div style="background: #f9fafb; border-radius: 6px; padding: 8px 6px;">
                             <div style="font-size: 9px; color: #999; margin-bottom: 4px;">${month}월</div>
                             <div style="font-size: 10px; font-weight: 700; color: ${balanceColor};">${balanceSign}₩${Math.abs(requiredBalance / 10000).toFixed(0)}만</div>
@@ -1955,16 +2026,29 @@
             // Google Sheets에서 항목 데이터 로드 (병렬)
             const itemsLoaded = loadItems();
 
-            // 두 데이터가 모두 로드될 때까지 대기
-            const [monthlySuccess, itemsSuccess] = await Promise.all([monthlyDataLoaded, itemsLoaded]);
+            // 백엔드에서 오늘 잔고 로드 (병렬)
+            const balanceLoaded = loadTodayBalance();
 
-            if (monthlySuccess && itemsSuccess) {
+            // 백엔드에서 월말 예상 잔고 로드 (병렬)
+            const monthEndBalanceLoaded = loadMonthEndBalance();
+
+            // 네 데이터가 모두 로드될 때까지 대기
+            const [monthlySuccess, itemsSuccess, balanceSuccess, monthEndSuccess] = await Promise.all([
+                monthlyDataLoaded,
+                itemsLoaded,
+                balanceLoaded,
+                monthEndBalanceLoaded
+            ]);
+
+            if (monthlySuccess && itemsSuccess && balanceSuccess && monthEndSuccess) {
                 console.log('✅ 모든 데이터 로드 완료, UI 업데이트 중...');
                 updateUI();
             } else {
                 console.error('❌ 데이터 로드 실패');
                 console.error('  월별 데이터:', monthlySuccess ? '성공' : '실패');
                 console.error('  항목 데이터:', itemsSuccess ? '성공' : '실패');
+                console.error('  금일 잔고:', balanceSuccess ? '성공' : '실패');
+                console.error('  월말 잔고:', monthEndSuccess ? '성공' : '실패');
             }
         }
 

@@ -94,6 +94,32 @@ router.get('/today-balance', async (req, res) => {
 });
 
 /**
+ * GET /api/month-end-balance
+ * 이번달 월말 예상 잔고 조회 (80행)
+ */
+router.get('/month-end-balance', async (req, res) => {
+    try {
+        const balance = await googleSheets.getMonthEndBalance();
+
+        res.json({
+            success: true,
+            message: '월말 예상 잔고 조회 성공',
+            data: {
+                balance: balance,
+                date: new Date().toISOString()
+            }
+        });
+    } catch (error) {
+        console.error('API 에러:', error);
+        res.status(500).json({
+            success: false,
+            error: '월말 예상 잔고 조회 실패',
+            message: error.message
+        });
+    }
+});
+
+/**
  * GET /api/calculated-balance
  * 기준날짜/금액 기반으로 오늘 잔고 계산
  */
