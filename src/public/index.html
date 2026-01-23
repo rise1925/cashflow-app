@@ -613,9 +613,54 @@
         .month-bar-value.negative {
             color: #ef4444;
         }
+
+        /* 로딩 오버레이 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            flex-direction: column;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            margin-top: 16px;
+            font-size: 14px;
+            color: #666;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
+    <!-- 로딩 오버레이 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">데이터 로딩 중...</div>
+    </div>
+
     <div class="mobile-container">
 
         <!-- 언어 토글 버튼 -->
@@ -666,7 +711,7 @@
                                 <div style="font-size: 28px; font-weight: 700; margin-bottom: 8px;" id="currentBalance">₩2,337,459</div>
                                 <!-- 월말 예상 잔고 -->
                                 <div style="font-size: 10px; color: #666; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
-                                    <span style="color: #999;">이번달 예상 잔고:</span> <span style="font-weight: 700; font-size: 14px;" id="monthEndBalance">-</span>
+                                    <span style="color: #999;" id="monthEndExpectedLabel">이번달 예상 잔고:</span> <span style="font-weight: 700; font-size: 14px;" id="monthEndBalance">-</span>
                                 </div>
                             </div>
                         </div>
@@ -799,6 +844,13 @@
                 cashBalanceLabel: '현금잔고',
                 noSchedule: '예정된 일정이 없습니다',
                 card: '카드',
+                balance: '잔고',
+                detailView: '상세 내역',
+                netIncome: '순수입',
+                date: '날짜',
+                category: '구분',
+                item: '항목',
+                amount: '금액',
                 days: ['일', '월', '화', '수', '목', '금', '토'],
                 months: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
             },
@@ -821,6 +873,14 @@
                 cashBalanceLabel: 'Saldo em Dinheiro',
                 noSchedule: 'Não há eventos programados',
                 card: 'Cartão',
+                monthEndExpected: 'Saldo Esperado do Mês',
+                balance: 'Saldo',
+                detailView: 'Detalhes',
+                netIncome: 'Renda Líquida',
+                date: 'Data',
+                category: 'Categoria',
+                item: 'Item',
+                amount: 'Valor',
                 days: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
                 months: ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'],
                 items: {
@@ -1219,6 +1279,7 @@
             const totalExpenseLabel = document.getElementById('totalExpenseLabel');
             const totalIncomeLabel = document.getElementById('totalIncomeLabel');
             const requiredAmountLabel = document.getElementById('requiredAmountLabel');
+            const monthEndExpectedLabel = document.getElementById('monthEndExpectedLabel');
 
             if (cashBalanceHeader) cashBalanceHeader.textContent = t('cashBalance');
             if (forecastBalanceHeader) forecastBalanceHeader.textContent = t('forecastBalance');
@@ -1226,6 +1287,7 @@
             if (totalExpenseLabel) totalExpenseLabel.textContent = t('totalExpense');
             if (totalIncomeLabel) totalIncomeLabel.textContent = t('totalIncome');
             if (requiredAmountLabel) requiredAmountLabel.textContent = t('requiredAmount');
+            if (monthEndExpectedLabel) monthEndExpectedLabel.textContent = t('monthEndExpected') + ':';
 
             // 요일
             const dayOfWeek = getDayName(today.getDay());
@@ -1691,7 +1753,7 @@
 
                         <!-- 잔고 바 -->
                         <div style="display: flex; align-items: center;">
-                            <div style="width: 40px; font-size: 9px; color: ${monthEndBalanceColor};">잔고</div>
+                            <div style="width: 40px; font-size: 9px; color: ${monthEndBalanceColor};">${t('balance')}</div>
                             <div style="flex: 1; height: 18px; background: #e5e7eb; border-radius: 4px; margin: 0 8px; overflow: hidden; position: relative;">
                                 <div style="height: 100%; width: ${balancePercent}%; background: linear-gradient(90deg, ${monthEndBalanceColor}, ${monthEndBalanceColor}dd); border-radius: 4px;"></div>
                                 <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 9px; font-weight: 700; color: ${balancePercent > 50 ? '#fff' : monthEndBalanceColor}; text-shadow: 0 0 2px rgba(0,0,0,0.3);">
@@ -1702,14 +1764,18 @@
                     </div>
                 `;
 
-                // 우측 필요 잔고 (좌측 차트와 높이 맞춤 - 3개 바 높이: 18*3 + 2*2 + 16(제목+여백) = 74px)
+                // 우측 필요 잔고 (좌측 차트와 높이 정확히 맞춤)
                 const balanceColor = requiredBalance >= 0 ? '#10b981' : '#ef4444';
                 const balanceSign = requiredBalance >= 0 ? '+' : '';
+
+                // 차트 높이 계산: 제목(11px + 4px 여백) + 3개 바(18px * 3) + 바 간격(2px * 2) + 여백(12px) = 85px
                 requiredBalanceHtml += `
-                    <div style="margin-bottom: 12px; text-align: center; padding: 0; display: flex; flex-direction: column; justify-content: center; height: 74px;">
-                        <div style="background: #f9fafb; border-radius: 6px; padding: 8px 6px;">
-                            <div style="font-size: 9px; color: #999; margin-bottom: 4px;">${month}월</div>
-                            <div style="font-size: 10px; font-weight: 700; color: ${balanceColor};">${balanceSign}₩${Math.abs(requiredBalance / 10000).toFixed(0)}만</div>
+                    <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: center; height: 85px;">
+                        <div style="background: #f9fafb; border-radius: 6px; padding: 8px 12px; text-align: center; width: 100%;">
+                            <div style="font-size: 10px; color: #999; margin-bottom: 4px;">${month}${t('month')}</div>
+                            <div style="font-size: 11px; font-weight: 700; color: ${balanceColor};">
+                                ${balanceSign}₩${Math.abs(requiredBalance / 10000).toFixed(0)}${currentLang === 'ko' ? '만' : 'k'}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1757,51 +1823,73 @@
                 // HTML 렌더링
                 let html = '';
                 html += `<div style="text-align: center; margin-bottom: 20px;">`;
-                html += `<div style="font-size: 14px; color: #999;">수입: <span style="color: #10b981; font-weight: 700;">+₩${totalIncome.toLocaleString('ko-KR')}</span></div>`;
-                html += `<div style="font-size: 14px; color: #999; margin-top: 4px;">지출: <span style="color: #ef4444; font-weight: 700;">-₩${totalExpense.toLocaleString('ko-KR')}</span></div>`;
+                html += `<div style="font-size: 14px; color: #999;">${t('income')}: <span style="color: #10b981; font-weight: 700;">+₩${totalIncome.toLocaleString('ko-KR')}</span></div>`;
+                html += `<div style="font-size: 14px; color: #999; margin-top: 4px;">${t('expense')}: <span style="color: #ef4444; font-weight: 700;">-₩${totalExpense.toLocaleString('ko-KR')}</span></div>`;
                 html += `<div style="font-size: 18px; font-weight: 700; margin-top: 8px; color: ${netIncome < 0 ? '#ef4444' : '#10b981'};">`;
-                html += `순수입: ${netIncome < 0 ? '' : '+'}₩${netIncome.toLocaleString('ko-KR')}`;
+                html += `${t('netIncome')}: ${netIncome < 0 ? '' : '+'}₩${netIncome.toLocaleString('ko-KR')}`;
                 html += `</div></div>`;
 
                 // 상세 내역 테이블
                 html += '<div class="detail-section">';
-                html += '<div class="detail-section-title">📋 상세 내역</div>';
-                html += '<div style="max-height: 400px; overflow-y: auto;">';
+                html += `<div class="detail-section-title">📋 ${t('detailView')}</div>`;
+                html += '<div style="max-height: 400px; overflow-y: auto; overflow-x: auto;">';
+
+                // 테이블 헤더
+                html += `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                        <thead>
+                            <tr style="background: #f3f4f6; position: sticky; top: 0;">
+                                <th style="padding: 8px 6px; text-align: center; border-bottom: 2px solid #e5e7eb; font-weight: 600; color: #666;">${t('date')}</th>
+                                <th style="padding: 8px 6px; text-align: center; border-bottom: 2px solid #e5e7eb; font-weight: 600; color: #666;">${t('category')}</th>
+                                <th style="padding: 8px 6px; text-align: left; border-bottom: 2px solid #e5e7eb; font-weight: 600; color: #666;">${t('item')}</th>
+                                <th style="padding: 8px 6px; text-align: right; border-bottom: 2px solid #e5e7eb; font-weight: 600; color: #666;">${t('amount')}</th>
+                                <th style="padding: 8px 6px; text-align: right; border-bottom: 2px solid #e5e7eb; font-weight: 600; color: #666;">${t('balance')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
 
                 details.forEach(row => {
-                    if (row.date || row.item || row.expense > 0 || row.income > 0) {
-                        const rowColor = row.expense > 0 ? '#fef2f2' : (row.income > 0 ? '#f0fdf4' : '#f9fafb');
+                    // 금액이 없으면 (지출도 수입도 0이면) 표시 생략
+                    if (row.expense > 0 || row.income > 0) {
+                        const rowColor = row.expense > 0 ? '#fef2f2' : (row.income > 0 ? '#f0fdf4' : '#fff');
 
-                        // 카테고리 뱃지 색상
-                        let categoryBadge = '';
+                        // 카테고리 뱃지
+                        let categoryBadge = '-';
                         if (row.category) {
                             const badgeColor = row.category.includes('현금') ? '#10b981' :
                                              row.category.includes('삼성') ? '#667eea' :
                                              row.category.includes('현대') ? '#f59e0b' : '#6b7280';
-                            categoryBadge = `<span style="font-size: 9px; padding: 2px 6px; background: ${badgeColor}; color: white; border-radius: 4px; margin-right: 4px;">${row.category}</span>`;
+                            categoryBadge = `<span style="font-size: 9px; padding: 2px 6px; background: ${badgeColor}; color: white; border-radius: 4px; white-space: nowrap;">${row.category}</span>`;
                         }
 
+                        // 금액 (수입 또는 지출)
+                        let amountHtml = '-';
+                        if (row.expense > 0) {
+                            amountHtml = `<span style="color: #ef4444; font-weight: 600;">-₩${row.expense.toLocaleString('ko-KR')}</span>`;
+                        } else if (row.income > 0) {
+                            amountHtml = `<span style="color: #10b981; font-weight: 600;">+₩${row.income.toLocaleString('ko-KR')}</span>`;
+                        }
+
+                        // 잔고 색상
+                        const balanceColor = row.balance < 0 ? '#ef4444' : '#333';
+
                         html += `
-                            <div class="detail-item" style="background: ${rowColor}; padding: 10px; margin-bottom: 6px; border-radius: 6px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div style="flex: 1;">
-                                        <div style="font-size: 11px; font-weight: 600; color: #333; margin-bottom: 4px;">
-                                            ${row.date ? `${row.date}일` : ''} ${categoryBadge}${row.item || '-'}
-                                        </div>
-                                        <div style="font-size: 10px; color: #666;">
-                                            ${row.expense > 0 ? `<span style="color: #ef4444; font-weight: 600;">-₩${row.expense.toLocaleString('ko-KR')}</span>` : ''}
-                                            ${row.income > 0 ? `<span style="color: #10b981; font-weight: 600;">+₩${row.income.toLocaleString('ko-KR')}</span>` : ''}
-                                        </div>
-                                    </div>
-                                    <div style="font-size: 10px; color: #999; text-align: right; margin-left: 12px;">
-                                        잔고<br>₩${row.balance.toLocaleString('ko-KR')}
-                                    </div>
-                                </div>
-                            </div>
+                            <tr style="background: ${rowColor}; border-bottom: 1px solid #f3f4f6;">
+                                <td style="padding: 8px 6px; text-align: center; color: #666;">${row.date ? `${row.date}일` : '-'}</td>
+                                <td style="padding: 8px 6px; text-align: center;">${categoryBadge}</td>
+                                <td style="padding: 8px 6px; text-align: left; color: #333; font-weight: 500;">${row.item || '-'}</td>
+                                <td style="padding: 8px 6px; text-align: right;">${amountHtml}</td>
+                                <td style="padding: 8px 6px; text-align: right; font-weight: 600; color: ${balanceColor};">₩${row.balance.toLocaleString('ko-KR')}</td>
+                            </tr>
                         `;
                     }
                 });
 
+                html += `
+                        </tbody>
+                    </table>
+                `;
                 html += '</div></div>';
 
                 document.getElementById('monthDetailContent').innerHTML = html;
@@ -2016,39 +2104,63 @@
             event.target.closest('.nav-item').classList.add('active');
         }
         
+        // 로딩 표시 함수
+        function showLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.classList.add('active');
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.classList.remove('active');
+        }
+
         // 초기화
         async function initialize() {
             console.log('🚀 앱 초기화 시작...');
+            showLoading();
 
-            // Google Sheets에서 월별 데이터 로드 (병렬)
-            const monthlyDataLoaded = loadMonthlyData();
+            try {
+                // Google Sheets에서 월별 데이터 로드 (병렬)
+                const monthlyDataLoaded = loadMonthlyData();
 
-            // Google Sheets에서 항목 데이터 로드 (병렬)
-            const itemsLoaded = loadItems();
+                // Google Sheets에서 항목 데이터 로드 (병렬)
+                const itemsLoaded = loadItems();
 
-            // 백엔드에서 오늘 잔고 로드 (병렬)
-            const balanceLoaded = loadTodayBalance();
+                // 백엔드에서 오늘 잔고 로드 (병렬)
+                const balanceLoaded = loadTodayBalance();
 
-            // 백엔드에서 월말 예상 잔고 로드 (병렬)
-            const monthEndBalanceLoaded = loadMonthEndBalance();
+                // 백엔드에서 월말 예상 잔고 로드 (병렬)
+                const monthEndBalanceLoaded = loadMonthEndBalance();
 
-            // 네 데이터가 모두 로드될 때까지 대기
-            const [monthlySuccess, itemsSuccess, balanceSuccess, monthEndSuccess] = await Promise.all([
-                monthlyDataLoaded,
-                itemsLoaded,
-                balanceLoaded,
-                monthEndBalanceLoaded
-            ]);
+                // 네 데이터가 모두 로드될 때까지 대기
+                const [monthlySuccess, itemsSuccess, balanceSuccess, monthEndSuccess] = await Promise.all([
+                    monthlyDataLoaded,
+                    itemsLoaded,
+                    balanceLoaded,
+                    monthEndBalanceLoaded
+                ]);
 
-            if (monthlySuccess && itemsSuccess && balanceSuccess && monthEndSuccess) {
-                console.log('✅ 모든 데이터 로드 완료, UI 업데이트 중...');
-                updateUI();
-            } else {
-                console.error('❌ 데이터 로드 실패');
-                console.error('  월별 데이터:', monthlySuccess ? '성공' : '실패');
-                console.error('  항목 데이터:', itemsSuccess ? '성공' : '실패');
-                console.error('  금일 잔고:', balanceSuccess ? '성공' : '실패');
-                console.error('  월말 잔고:', monthEndSuccess ? '성공' : '실패');
+                if (monthlySuccess && itemsSuccess && balanceSuccess && monthEndSuccess) {
+                    console.log('✅ 모든 데이터 로드 완료, UI 업데이트 중...');
+                    updateUI();
+                } else {
+                    console.error('❌ 데이터 로드 실패');
+                    console.error('  월별 데이터:', monthlySuccess ? '성공' : '실패');
+                    console.error('  항목 데이터:', itemsSuccess ? '성공' : '실패');
+                    console.error('  금일 잔고:', balanceSuccess ? '성공' : '실패');
+                    console.error('  월말 잔고:', monthEndSuccess ? '성공' : '실패');
+
+                    // 사용자에게 에러 알림 표시
+                    alert('⚠️ 데이터 로드 실패\n\n다음 항목을 확인하세요:\n' +
+                          `• 월별 데이터: ${monthlySuccess ? '✅' : '❌'}\n` +
+                          `• 항목 데이터: ${itemsSuccess ? '✅' : '❌'}\n` +
+                          `• 금일 잔고: ${balanceSuccess ? '✅' : '❌'}\n` +
+                          `• 월말 잔고: ${monthEndSuccess ? '✅' : '❌'}\n\n` +
+                          '페이지를 새로고침(F5)하거나 브라우저 콘솔을 확인하세요.');
+                }
+            } finally {
+                hideLoading();
             }
         }
 

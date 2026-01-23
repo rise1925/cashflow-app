@@ -39,5 +39,5 @@ cYkAu8CwfLcJOrx3GsGSyThe
     GOOGLE_SERVICE_ACCOUNT_PROJECT_ID: process.env.GOOGLE_SERVICE_ACCOUNT_PROJECT_ID || 'pkt-call',
 
     // CORS
-    CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:3000'
+    CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:8001'
 };
