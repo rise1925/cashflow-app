@@ -381,7 +381,7 @@ router.post('/record', async (req, res) => {
 /**
  * POST /api/full-analysis
  * 전체 분석 (월별 + 계산 + 예측)
- * 
+ *
  * Request Body:
  * {
  *   "startBalance": 2337459,
@@ -401,18 +401,18 @@ router.post('/full-analysis', async (req, res) => {
 
         // 월별 데이터 조회
         const monthlyData = await googleSheets.getMonthlyData();
-        
+
         // 현재 잔고 계산
         const today = date ? new Date(date) : new Date();
         const balance = calculateBalance(startBalance, monthlyData, today);
-        
+
         // 예측 생성
         const projection = generateProjection(
             balance.currentBalance,
             balance.metrics.dailyExpense,
             30
         );
-        
+
         // 월별 비교
         const comparison = generateMonthComparison(monthlyData);
 
@@ -432,6 +432,29 @@ router.post('/full-analysis', async (req, res) => {
         res.status(500).json({
             success: false,
             error: '전체 분석 실패',
+            message: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/loans
+ * 대출 상환 데이터 조회 (B3:AN10)
+ */
+router.get('/loans', async (req, res) => {
+    try {
+        const loans = await googleSheets.getLoanData();
+
+        res.json({
+            success: true,
+            message: '대출 데이터 조회 성공',
+            data: loans
+        });
+    } catch (error) {
+        console.error('API 에러:', error);
+        res.status(500).json({
+            success: false,
+            error: '대출 데이터 조회 실패',
             message: error.message
         });
     }

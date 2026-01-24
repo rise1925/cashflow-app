@@ -792,6 +792,77 @@ class GoogleSheetsService {
     }
 
     /**
+     * 대출 상환 데이터 조회 (B3:AN10)
+     * B3~B10: 상환 날짜 (일자)
+     * C3~C10: 대출 기관/채권자
+     * D3~D10: 상환 방법/이자율
+     * E/F/G (1월), H/I/J (2월), ... AN (12월 balance)
+     */
+    async getLoanData() {
+        try {
+            await this.initialize();
+
+            const sheet = this.doc.sheetsByIndex[0];
+            console.log('💳 대출 상환 데이터 조회 중...');
+
+            // B3:AN10 범위 로드
+            await sheet.loadCells('B3:AN10');
+
+            const loans = [];
+
+            // 3~10행 순회 (0-indexed: 2~9)
+            for (let row = 2; row < 10; row++) {
+                const dateCell = sheet.getCell(row, 1); // B열 = 상환일
+                const lenderCell = sheet.getCell(row, 2); // C열 = 대출기관
+                const methodCell = sheet.getCell(row, 3); // D열 = 상환방법/이자율
+
+                const paymentDay = this._parseDateValue(dateCell.value);
+                const lender = lenderCell.value ? String(lenderCell.value).trim() : '';
+                const method = methodCell.value ? String(methodCell.value).trim() : '';
+
+                // 대출 기관이 있으면 처리
+                if (lender) {
+                    const monthlyData = [];
+
+                    // 1~12월 데이터 수집
+                    for (let month = 1; month <= 12; month++) {
+                        const baseCol = 4 + (month - 1) * 3;
+                        const expenseCell = sheet.getCell(row, baseCol); // 지출
+                        const incomeCell = sheet.getCell(row, baseCol + 1); // 수입
+                        const balanceCell = sheet.getCell(row, baseCol + 2); // 잔액
+
+                        const expense = Math.abs(this._parseNumber(expenseCell.value));
+                        const income = this._parseNumber(incomeCell.value);
+                        const balance = this._parseNumber(balanceCell.value);
+
+                        monthlyData.push({
+                            month: month,
+                            payment: expense, // 월 상환액
+                            income: income,
+                            remainingBalance: balance // 잔여 대출 잔액
+                        });
+                    }
+
+                    loans.push({
+                        paymentDay: paymentDay,
+                        lender: lender,
+                        method: method,
+                        monthlyData: monthlyData
+                    });
+
+                    console.log(`✅ ${lender}: 상환일 ${paymentDay}일, ${method}`);
+                }
+            }
+
+            console.log(`✅ 대출 ${loans.length}건 조회 완료`);
+            return loans;
+        } catch (error) {
+            console.error('❌ 대출 데이터 조회 실패:', error.message);
+            throw error;
+        }
+    }
+
+    /**
      * 초기화 상태 확인
      */
     isInitialized() {
