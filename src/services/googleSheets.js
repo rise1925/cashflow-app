@@ -75,9 +75,9 @@ class GoogleSheetsService {
                 };
             };
 
-            // 80~81행 로드: E80:AN81 (80행=월말잔고, 81행=Total)
+            // 81~82행 로드: E81:AN82 (81행=월말잔고, 82행=Total) - 대출 행 추가로 +1
             // 12월까지 포함: E(4), F(5), G(6) ... AL(37-expense), AM(38-income), AN(39-balance)
-            await sheet.loadCells('E80:AN81');
+            await sheet.loadCells('E81:AN82');
 
             const monthlyData = {};
 
@@ -86,12 +86,12 @@ class GoogleSheetsService {
                 const monthCode = String(month).padStart(2, '0');
                 const cols = getMonthColumns(month);
 
-                // 81행 (0-indexed: 80) - Total
-                const expenseCell = sheet.getCell(80, cols.expense);
-                const incomeCell = sheet.getCell(80, cols.income);
+                // 82행 (0-indexed: 81) - 지출, 수입 (Total)
+                const expenseCell = sheet.getCell(81, cols.expense); // E82, H82, K82...
+                const incomeCell = sheet.getCell(81, cols.income);   // F82, I82, L82...
 
-                // 80행 (0-indexed: 79) - 월말 잔고
-                const balanceCell = sheet.getCell(79, cols.balance);
+                // 81행 (0-indexed: 80) - 월말 누적 잔고
+                const balanceCell = sheet.getCell(80, cols.balance); // G81, J81, M81...
 
                 const monthExpense = Math.abs(this._parseNumber(expenseCell.value));
                 const monthIncome = this._parseNumber(incomeCell.value);
@@ -107,13 +107,13 @@ class GoogleSheetsService {
                 console.log(`✅ ${monthCode}월: 수입=₩${monthIncome.toLocaleString()}, 지출=₩${monthExpense.toLocaleString()}, 월말잔고=₩${monthEndBalance.toLocaleString()}`);
             }
 
-            // 여행 수익 추가 (B15:16, F/I/L.../AN 15:16)
-            await sheet.loadCells('B15:AN16');
+            // 여행 수익 추가 (B16:17, F/I/L.../AN 16:17) - 대출 행 추가로 +1
+            await sheet.loadCells('B16:AN17');
 
             console.log('🌏 여행 수익 데이터 로딩...');
 
-            // 15행, 16행에서 날짜 확인
-            for (let rowIdx = 14; rowIdx <= 15; rowIdx++) { // 0-indexed: 14, 15
+            // 16행, 17행에서 날짜 확인 (대출 행 추가로 +1)
+            for (let rowIdx = 15; rowIdx <= 16; rowIdx++) { // 0-indexed: 15, 16
                 const dateCell = sheet.getCell(rowIdx, 1); // B열
                 const itemCell = sheet.getCell(rowIdx, 3); // D열
 
@@ -185,14 +185,14 @@ class GoogleSheetsService {
 
             const cols = getMonthColumns(month);
 
-            // B26:AN80 범위 로드 (26~34행: 특수항목, 36~80행: 일일 데이터)
-            await sheet.loadCells('B26:AN80');
+            // B27:AN81 범위 로드 (27~35행: 특수항목, 37~81행: 일일 데이터) - 대출 행 추가로 +1
+            await sheet.loadCells('B27:AN81');
 
             const details = [];
-            const specialItems = []; // 26~34행 특수 항목 수집
+            const specialItems = []; // 27~35행 특수 항목 수집
 
-            // 26~34행 순회 (특수 항목들, 0-indexed: 25~33)
-            for (let row = 25; row < 34; row++) {
+            // 27~35행 순회 (특수 항목들, 0-indexed: 26~34)
+            for (let row = 26; row < 35; row++) {
                 const dateCell = sheet.getCell(row, 1); // B열 = 발생 주기 (예: "매주 수요일")
                 const categoryCell = sheet.getCell(row, 2); // C열 = 카테고리
                 const itemCell = sheet.getCell(row, 3); // D열 = 항목명
@@ -240,8 +240,8 @@ class GoogleSheetsService {
                 }
             });
 
-            // 36~80행 순회 (일일 데이터, 0-indexed: 35~79)
-            for (let row = 35; row < 80; row++) {
+            // 37~81행 순회 (일일 데이터, 0-indexed: 36~80) - 대출 행 추가로 +1
+            for (let row = 36; row < 81; row++) {
                 const dateCell = sheet.getCell(row, 1); // B열 = 날짜
                 const categoryCell = sheet.getCell(row, 2); // C열 = 카테고리 (현금/카드)
                 const itemCell = sheet.getCell(row, 3); // D열 = 항목명
@@ -308,11 +308,11 @@ class GoogleSheetsService {
 
             const cols = getMonthColumns(currentMonth);
 
-            // B36:AN80 범위 로드 (B열=날짜)
-            await sheet.loadCells('B36:AN80');
+            // B37:AN81 범위 로드 (B열=날짜) - 대출 행 추가로 +1
+            await sheet.loadCells('B37:AN81');
 
-            // 36~80행에서 B열의 날짜가 오늘 날짜와 일치하는 행 찾기
-            for (let row = 35; row < 80; row++) {
+            // 37~81행에서 B열의 날짜가 오늘 날짜와 일치하는 행 찾기 (0-indexed: 36~80)
+            for (let row = 36; row < 81; row++) {
                 const dateCell = sheet.getCell(row, 1);
                 const rawValue = dateCell.value;
 
@@ -372,13 +372,13 @@ class GoogleSheetsService {
 
             const cols = getMonthColumns(currentMonth);
 
-            // 80행 로드 (0-indexed: 79)
-            await sheet.loadCells('E80:AN80');
+            // 81행 로드 (0-indexed: 80) - 대출 행 추가로 +1
+            await sheet.loadCells('E81:AN81');
 
-            const balanceCell = sheet.getCell(79, cols.balance);
+            const balanceCell = sheet.getCell(80, cols.balance);
             const monthEndBalance = this._parseNumber(balanceCell.value);
 
-            console.log(`✅ ${currentMonth}월 월말 예상 잔고 (80행): ₩${monthEndBalance.toLocaleString()}`);
+            console.log(`✅ ${currentMonth}월 월말 예상 잔고 (81행): ₩${monthEndBalance.toLocaleString()}`);
             return monthEndBalance;
         } catch (error) {
             console.error('❌ 월말 예상 잔고 조회 실패:', error.message);
@@ -395,10 +395,10 @@ class GoogleSheetsService {
 
             const sheet = this.doc.sheetsByIndex[0];
 
-            // B70:B71 읽기 (기준날짜, 기준금액)
-            await sheet.loadCells('B70:C70');
-            const baseDateCell = sheet.getCell(69, 1); // B70 (0-indexed)
-            const baseAmountCell = sheet.getCell(69, 2); // C70
+            // B71:C71 읽기 (기준날짜, 기준금액) - 대출 행 추가로 +1
+            await sheet.loadCells('B71:C71');
+            const baseDateCell = sheet.getCell(70, 1); // B71 (0-indexed: 70)
+            const baseAmountCell = sheet.getCell(70, 2); // C71
 
             const baseDate = baseDateCell.value ? new Date(baseDateCell.value) : new Date();
             const baseAmount = this._parseNumber(baseAmountCell.value);
@@ -406,28 +406,28 @@ class GoogleSheetsService {
             console.log(`📅 기준날짜: ${baseDate.toLocaleDateString('ko-KR')}`);
             console.log(`💰 기준금액: ₩${baseAmount.toLocaleString()}`);
 
-            // C18:G19 읽기 (카드 정보)
-            // C18=삼성카드 한도, D18=이름, G18=남은 한도
-            // C19=현대카드 한도, D19=이름, G19=남은 한도
-            await sheet.loadCells('C18:G19');
-            const samsungLimit = this._parseNumber(sheet.getCell(17, 2).value); // C18
-            const samsungName = String(sheet.getCell(17, 3).value || '삼성카드').trim(); // D18
-            const samsungRemaining = this._parseNumber(sheet.getCell(17, 6).value); // G18
+            // C19:G20 읽기 (카드 정보) - 대출 행 추가로 +1
+            // C19=삼성카드 한도, D19=이름, G19=남은 한도
+            // C20=현대카드 한도, D20=이름, G20=남은 한도
+            await sheet.loadCells('C19:G20');
+            const samsungLimit = this._parseNumber(sheet.getCell(18, 2).value); // C19 (0-indexed: 18)
+            const samsungName = String(sheet.getCell(18, 3).value || '삼성카드').trim(); // D19
+            const samsungRemaining = this._parseNumber(sheet.getCell(18, 6).value); // G19
             const samsungUsed = samsungLimit - samsungRemaining;
 
-            const hyundaiLimit = this._parseNumber(sheet.getCell(18, 2).value); // C19
-            const hyundaiName = String(sheet.getCell(18, 3).value || '현대카드').trim(); // D19
-            const hyundaiRemaining = this._parseNumber(sheet.getCell(18, 6).value); // G19
+            const hyundaiLimit = this._parseNumber(sheet.getCell(19, 2).value); // C20 (0-indexed: 19)
+            const hyundaiName = String(sheet.getCell(19, 3).value || '현대카드').trim(); // D20
+            const hyundaiRemaining = this._parseNumber(sheet.getCell(19, 6).value); // G20
             const hyundaiUsed = hyundaiLimit - hyundaiRemaining;
 
             console.log(`💳 ${samsungName}: 한도 ₩${samsungLimit.toLocaleString()}, 남은 ₩${samsungRemaining.toLocaleString()}, 사용 ₩${samsungUsed.toLocaleString()}`);
             console.log(`💳 ${hyundaiName}: 한도 ₩${hyundaiLimit.toLocaleString()}, 남은 ₩${hyundaiRemaining.toLocaleString()}, 사용 ₩${hyundaiUsed.toLocaleString()}`);
 
-            // A73:F100 읽기 (항목 리스트 - 결제수단 포함)
-            await sheet.loadCells('A73:F100');
+            // A74:F101 읽기 (항목 리스트 - 결제수단 포함) - 대출 행 추가로 +1
+            await sheet.loadCells('A74:F101');
             const items = [];
 
-            for (let row = 72; row < 100; row++) { // A73부터 F100까지 (0-indexed: 72~99)
+            for (let row = 73; row < 101; row++) { // A74부터 F101까지 (0-indexed: 73~100)
                 const paymentTypeCell = sheet.getCell(row, 0); // A열 = 결제수단 (현금/삼성카드/현대카드)
                 const frequencyCell = sheet.getCell(row, 1); // B열 = 발생 주기
                 const referenceCell = sheet.getCell(row, 2); // C열 = 참고 정보
@@ -792,11 +792,12 @@ class GoogleSheetsService {
     }
 
     /**
-     * 대출 상환 데이터 조회 (B3:AN10)
-     * B3~B10: 상환 날짜 (일자)
-     * C3~C10: 대출 기관/채권자
-     * D3~D10: 상환 방법/이자율
-     * E/F/G (1월), H/I/J (2월), ... AN (12월 balance)
+     * 대출 상환 데이터 조회 (B3:AN15)
+     * B3~B15: 상환 날짜 (일자)
+     * C3~C15: 대출 기관/채권자
+     * D3~D15: 상환 방법/이자율
+     * E/F/G (1월), H/I/J (2월), ... AN (12월)
+     * E열: 월 상환액, F열: 대출 잔액, G열: 남은 상환 횟수
      */
     async getLoanData() {
         try {
@@ -805,13 +806,13 @@ class GoogleSheetsService {
             const sheet = this.doc.sheetsByIndex[0];
             console.log('💳 대출 상환 데이터 조회 중...');
 
-            // B3:AN10 범위 로드
-            await sheet.loadCells('B3:AN10');
+            // B3:AN15 범위 로드 (행 확장: 10 → 15)
+            await sheet.loadCells('B3:AN15');
 
             const loans = [];
 
-            // 3~10행 순회 (0-indexed: 2~9)
-            for (let row = 2; row < 10; row++) {
+            // 3~15행 순회 (0-indexed: 2~14)
+            for (let row = 2; row < 15; row++) {
                 const dateCell = sheet.getCell(row, 1); // B열 = 상환일
                 const lenderCell = sheet.getCell(row, 2); // C열 = 대출기관
                 const methodCell = sheet.getCell(row, 3); // D열 = 상환방법/이자율
@@ -827,19 +828,24 @@ class GoogleSheetsService {
                     // 1~12월 데이터 수집
                     for (let month = 1; month <= 12; month++) {
                         const baseCol = 4 + (month - 1) * 3;
-                        const expenseCell = sheet.getCell(row, baseCol); // 지출
-                        const incomeCell = sheet.getCell(row, baseCol + 1); // 수입
-                        const balanceCell = sheet.getCell(row, baseCol + 2); // 잔액
+                        const expenseCell = sheet.getCell(row, baseCol); // E열: 월 상환액 (지출)
+                        const balanceCell = sheet.getCell(row, baseCol + 1); // F열: 대출 잔액
+                        const monthsCell = sheet.getCell(row, baseCol + 2); // G열: 남은 상환 횟수
 
-                        const expense = Math.abs(this._parseNumber(expenseCell.value));
-                        const income = this._parseNumber(incomeCell.value);
+                        const payment = Math.abs(this._parseNumber(expenseCell.value));
                         const balance = this._parseNumber(balanceCell.value);
+                        const months = this._parseNumber(monthsCell.value);
+
+                        if (month === 1) {
+                            console.log(`  ${lender} - ${month}월: 상환액=₩${payment.toLocaleString()}, 잔액=₩${balance.toLocaleString()}, 잔여회차=${months}회`);
+                            console.log(`    셀값 원본 - E${row+1}(상환액): ${expenseCell.value}, F${row+1}(잔액): ${balanceCell.value}, G${row+1}(회차): ${monthsCell.value}`);
+                        }
 
                         monthlyData.push({
                             month: month,
-                            payment: expense, // 월 상환액
-                            income: income,
-                            remainingBalance: balance // 잔여 대출 잔액
+                            payment: payment, // 월 상환액
+                            remainingBalance: balance, // 잔여 대출 잔액
+                            remainingMonths: months // 남은 상환 횟수
                         });
                     }
 

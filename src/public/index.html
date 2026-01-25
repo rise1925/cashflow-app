@@ -671,13 +671,10 @@
             <button onclick="toggleLanguage('pt')" id="langBtnPt" style="padding: 8px 16px; margin: 0 6px; border: 2px solid #e5e7eb; background: white; color: #666; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 12px;">
                 🇧🇷 Português
             </button>
-            <button onclick="toggleLoanView()" id="loanToggleBtn" style="padding: 8px 16px; margin: 0 6px; border: 2px solid #10b981; background: white; color: #10b981; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 12px;">
-                💳 <span id="loanToggleBtnText">대출 보기</span>
-            </button>
         </div>
 
         <!-- Content -->
-        <div class="content">
+        <div class="content" style="padding-bottom: 70px;">
             <!-- Daily Dashboard Section -->
             <div class="section active" id="dashboard-section">
 
@@ -755,14 +752,38 @@
                     </div>
                 </div>
 
-                <!-- 4. 대출 상환 섹션 (토글) -->
-                <div class="card" id="loanSection" style="display: none;">
-                    <div class="card-header" style="margin-bottom: 14px;" id="loanSectionHeader">💳 대출 상환</div>
-                    <div id="loanContent">
+            </div>
+
+            <!-- Loan Status Tab Section -->
+            <div class="section" id="loan-section" style="display: none;">
+                <!-- 대출 요약 카드 -->
+                <div class="card">
+                    <div class="card-header" style="margin-bottom: 14px;" id="loanSummaryHeader">💳 대출 요약</div>
+                    <div id="loanSummaryContent">
+                        <div style="text-align: center; padding: 40px; color: #999;">로딩 중...</div>
+                    </div>
+                </div>
+
+                <!-- 대출 상세 차트 -->
+                <div class="card">
+                    <div class="card-header" style="margin-bottom: 14px;" id="loanDetailHeader">📊 대출 상세</div>
+                    <div id="loanChartContent">
                         <div style="text-align: center; padding: 40px; color: #999;">로딩 중...</div>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- 하단 네비게이션 바 -->
+        <div style="position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; z-index: 1000;">
+            <button onclick="switchTab('dashboard')" id="tabDashboard" style="flex: 1; padding: 14px 0; border: none; background: #667eea; color: white; font-size: 13px; font-weight: 600; cursor: pointer; border-top: 3px solid #667eea; transition: all 0.3s;">
+                <div>📊</div>
+                <div style="font-size: 10px; margin-top: 4px;" id="tabDashboardText">가계부</div>
+            </button>
+            <button onclick="switchTab('loan')" id="tabLoan" style="flex: 1; padding: 14px 0; border: none; background: white; color: #999; font-size: 13px; font-weight: 600; cursor: pointer; border-top: 3px solid transparent; transition: all 0.3s;">
+                <div>💳</div>
+                <div style="font-size: 10px; margin-top: 4px;" id="tabLoanText">대출상태</div>
+            </button>
         </div>
 
         <!-- 월말까지 예정 내역 모달 -->
@@ -876,6 +897,8 @@
                 method: '상환 방법',
                 monthlyPayment: '월 상환액',
                 remainingBalance: '잔여 대출 잔액',
+                tabDashboard: '가계부',
+                tabLoan: '대출상태',
                 days: ['일', '월', '화', '수', '목', '금', '토'],
                 months: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
             },
@@ -914,6 +937,8 @@
                 method: 'Método de Pagamento',
                 monthlyPayment: 'Pagamento Mensal',
                 remainingBalance: 'Saldo Devedor',
+                tabDashboard: 'Finanças',
+                tabLoan: 'Empréstimos',
                 days: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
                 months: ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'],
                 items: {
@@ -1015,6 +1040,10 @@
                 btnKo.style.color = '#666';
                 btnKo.style.borderColor = '#e5e7eb';
             }
+
+            // 탭 텍스트 업데이트
+            document.getElementById('tabDashboardText').textContent = t('tabDashboard');
+            document.getElementById('tabLoanText').textContent = t('tabLoan');
 
             // UI 업데이트
             updateUI();
@@ -1273,34 +1302,49 @@
             }
         }
 
-        // 대출 정보 표시 토글
-        function toggleLoanView() {
-            loanViewVisible = !loanViewVisible;
-            const loanSection = document.getElementById('loanSection');
-            const toggleBtn = document.getElementById('loanToggleBtn');
-            const toggleText = document.getElementById('loanToggleBtnText');
+        // 탭 전환 함수
+        function switchTab(tab) {
+            const t = (key) => translations[currentLang][key] || key;
 
-            if (loanViewVisible) {
-                loanSection.style.display = 'block';
-                toggleBtn.style.background = '#10b981';
-                toggleBtn.style.color = 'white';
-                toggleText.textContent = t('loanHide');
+            if (tab === 'dashboard') {
+                // 가계부 탭 활성화
+                document.getElementById('dashboard-section').style.display = 'block';
+                document.getElementById('loan-section').style.display = 'none';
+
+                document.getElementById('tabDashboard').style.background = '#667eea';
+                document.getElementById('tabDashboard').style.color = 'white';
+                document.getElementById('tabDashboard').style.borderTopColor = '#667eea';
+
+                document.getElementById('tabLoan').style.background = 'white';
+                document.getElementById('tabLoan').style.color = '#999';
+                document.getElementById('tabLoan').style.borderTopColor = 'transparent';
+            } else if (tab === 'loan') {
+                // 대출 탭 활성화
+                document.getElementById('dashboard-section').style.display = 'none';
+                document.getElementById('loan-section').style.display = 'block';
+
+                document.getElementById('tabDashboard').style.background = 'white';
+                document.getElementById('tabDashboard').style.color = '#999';
+                document.getElementById('tabDashboard').style.borderTopColor = 'transparent';
+
+                document.getElementById('tabLoan').style.background = '#667eea';
+                document.getElementById('tabLoan').style.color = 'white';
+                document.getElementById('tabLoan').style.borderTopColor = '#667eea';
+
+                // 대출 데이터 렌더링
                 renderLoanData();
-            } else {
-                loanSection.style.display = 'none';
-                toggleBtn.style.background = 'white';
-                toggleBtn.style.color = '#10b981';
-                toggleText.textContent = t('loanShow');
             }
         }
 
-        // 대출 데이터 렌더링 (스택 막대 그래프)
+        // 대출 데이터 렌더링 (요약 + 상세 차트)
         function renderLoanData() {
-            const content = document.getElementById('loanContent');
+            const summaryContent = document.getElementById('loanSummaryContent');
+            const chartContent = document.getElementById('loanChartContent');
             const t = (key) => translations[currentLang][key] || key;
 
             if (!loanData || loanData.length === 0) {
-                content.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">대출 데이터가 없습니다</div>';
+                summaryContent.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">대출 데이터가 없습니다</div>';
+                chartContent.innerHTML = '';
                 return;
             }
 
@@ -1316,118 +1360,91 @@
                 totalRemainingBalance += currentMonthData.remainingBalance;
             });
 
-            // 최대값 계산 (차트 스케일용)
-            const maxValue = Math.max(totalMonthlyPayment, totalRemainingBalance);
-
-            // 스택 막대 그래프 생성
-            let html = `
-                <div style="cursor: pointer;" onclick="showLoanDetail()">
-                    <!-- 이번달 총 상환액 -->
-                    <div style="margin-bottom: 16px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <div style="font-size: 11px; font-weight: 600; color: #666;">${currentLang === 'ko' ? '이번달 상환액' : 'Pagamento deste Mês'}</div>
-                            <div style="font-size: 14px; font-weight: 700; color: #ef4444;">
-                                -₩${totalMonthlyPayment.toLocaleString('ko-KR')}
-                            </div>
-                        </div>
-
-                        <!-- 스택 막대 -->
-                        <div style="height: 40px; background: #f3f4f6; border-radius: 8px; overflow: hidden; position: relative;">
-                            ${loanData.map((loan, idx) => {
-                                const currentMonthData = loan.monthlyData[currentMonth - 1];
-                                const percentage = (currentMonthData.payment / totalMonthlyPayment) * 100;
-                                const colors = ['#667eea', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
-                                const color = colors[idx % colors.length];
-
-                                return `
-                                    <div style="position: absolute; left: ${loanData.slice(0, idx).reduce((sum, l) => {
-                                        return sum + (l.monthlyData[currentMonth - 1].payment / totalMonthlyPayment) * 100;
-                                    }, 0)}%; width: ${percentage}%; height: 100%; background: ${color}; display: flex; align-items: center; justify-content: center;">
-                                        ${percentage > 15 ? `<span style="font-size: 9px; font-weight: 600; color: white;">${loan.lender}</span>` : ''}
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-
-                        <!-- 범례 -->
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: 9px;">
-                            ${loanData.map((loan, idx) => {
-                                const currentMonthData = loan.monthlyData[currentMonth - 1];
-                                const colors = ['#667eea', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
-                                const color = colors[idx % colors.length];
-
-                                return `
-                                    <div style="display: flex; align-items: center; gap: 4px;">
-                                        <div style="width: 12px; height: 12px; background: ${color}; border-radius: 3px;"></div>
-                                        <span style="color: #666;">${loan.lender}: ₩${(currentMonthData.payment / 10000).toFixed(0)}만</span>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
+            // 1. 요약 표시
+            let summaryHtml = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <!-- 이번달 상환액 -->
+                    <div style="padding: 16px; background: linear-gradient(135deg, #fef3c7 0%, #fca5a5 100%); border-radius: 12px;">
+                        <div style="font-size: 10px; color: #7c2d12; margin-bottom: 4px;">${currentLang === 'ko' ? '이번달 상환액' : 'Pagamento'}</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #991b1b;">-₩${(totalMonthlyPayment / 10000).toFixed(0)}만</div>
                     </div>
 
                     <!-- 총 잔여 대출액 -->
-                    <div style="padding-top: 16px; border-top: 2px solid #e5e7eb;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <div style="font-size: 11px; font-weight: 600; color: #666;">${t('remainingBalance')}</div>
-                            <div style="font-size: 14px; font-weight: 700; color: #667eea;">
-                                ₩${totalRemainingBalance.toLocaleString('ko-KR')}
-                            </div>
-                        </div>
-
-                        <!-- 스택 막대 -->
-                        <div style="height: 40px; background: #f3f4f6; border-radius: 8px; overflow: hidden; position: relative;">
-                            ${loanData.map((loan, idx) => {
-                                const currentMonthData = loan.monthlyData[currentMonth - 1];
-                                const percentage = (currentMonthData.remainingBalance / totalRemainingBalance) * 100;
-                                const colors = ['#667eea', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
-                                const color = colors[idx % colors.length];
-
-                                return `
-                                    <div style="position: absolute; left: ${loanData.slice(0, idx).reduce((sum, l) => {
-                                        return sum + (l.monthlyData[currentMonth - 1].remainingBalance / totalRemainingBalance) * 100;
-                                    }, 0)}%; width: ${percentage}%; height: 100%; background: ${color}; opacity: 0.7; display: flex; align-items: center; justify-content: center;">
-                                        ${percentage > 15 ? `<span style="font-size: 9px; font-weight: 600; color: white;">${loan.lender}</span>` : ''}
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-
-                        <!-- 범례 -->
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: 9px;">
-                            ${loanData.map((loan, idx) => {
-                                const currentMonthData = loan.monthlyData[currentMonth - 1];
-                                const colors = ['#667eea', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
-                                const color = colors[idx % colors.length];
-
-                                return `
-                                    <div style="display: flex; align-items: center; gap: 4px;">
-                                        <div style="width: 12px; height: 12px; background: ${color}; opacity: 0.7; border-radius: 3px;"></div>
-                                        <span style="color: #666;">${loan.lender}: ₩${(currentMonthData.remainingBalance / 10000).toFixed(0)}만</span>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-
-                    <div style="text-align: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
-                        <span style="font-size: 11px; color: #667eea; font-weight: 600;">👆 ${currentLang === 'ko' ? '클릭하여 상세 내역 보기' : 'Clique para ver detalhes'}</span>
+                    <div style="padding: 16px; background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%); border-radius: 12px;">
+                        <div style="font-size: 10px; color: #4c1d95; margin-bottom: 4px;">${t('remainingBalance')}</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #5b21b6;">₩${(totalRemainingBalance / 10000).toFixed(0)}만</div>
                     </div>
                 </div>
             `;
 
-            content.innerHTML = html;
+            summaryContent.innerHTML = summaryHtml;
+
+            // 2. 상세 차트 표시 (스택 바)
+            // 잔여 회차가 적은 순으로 정렬
+            const sortedLoans = [...loanData].sort((a, b) => {
+                const aMonths = a.monthlyData[currentMonth - 1].remainingMonths || 0;
+                const bMonths = b.monthlyData[currentMonth - 1].remainingMonths || 0;
+                return aMonths - bMonths;
+            });
+
+            let chartHtml = '';
+
+            sortedLoans.forEach((loan, idx) => {
+                const colors = ['#667eea', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
+                const color = colors[idx % colors.length];
+                const currentMonthData = loan.monthlyData[currentMonth - 1];
+
+                // 잔여 회차는 백엔드에서 가져온 데이터 사용
+                const remainingMonths = currentMonthData.remainingMonths || 0;
+
+                const totalBalance = currentMonthData.remainingBalance;
+                const monthlyPayment = currentMonthData.payment;
+
+                chartHtml += `
+                    <div style="margin-bottom: 16px;">
+                        <!-- 대출 기관명 및 정보 -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #333;">${loan.lender}</div>
+                            <div style="font-size: 9px; color: #666;">
+                                ${remainingMonths}${currentLang === 'ko' ? '회' : 'x'} | ${loan.paymentDay}${currentLang === 'ko' ? '일' : 'th'}
+                            </div>
+                        </div>
+
+                        <!-- 스택 바 차트 (한 줄) -->
+                        <div style="position: relative; height: 28px; background: #f3f4f6; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
+                            <!-- 월 상환액 (왼쪽 30%) -->
+                            <div style="position: absolute; left: 0; top: 0; width: 30%; height: 100%; background: ${color}; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 9px; font-weight: 700; color: white;">-₩${(monthlyPayment / 10000).toFixed(1)}만</span>
+                            </div>
+
+                            <!-- 총 잔액 (오른쪽 70%) -->
+                            <div style="position: absolute; left: 30%; top: 0; width: 70%; height: 100%; background: ${color}; opacity: 0.25; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 9px; font-weight: 700; color: #333;">₩${(totalBalance / 10000).toFixed(0)}만</span>
+                            </div>
+                        </div>
+
+                        <!-- 라벨 -->
+                        <div style="display: flex; margin-top: 3px; font-size: 8px; color: #999;">
+                            <div style="width: 30%; text-align: center;">${currentLang === 'ko' ? '월상환' : 'Pagamento'}</div>
+                            <div style="width: 70%; text-align: center;">${currentLang === 'ko' ? '총잔액' : 'Saldo'}</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            chartContent.innerHTML = chartHtml;
 
             // 헤더 번역 업데이트
-            document.getElementById('loanSectionHeader').textContent = t('loanRepayment');
+            document.getElementById('loanSummaryHeader').textContent = t('loanRepayment');
+            document.getElementById('loanDetailHeader').textContent = `📊 ${currentLang === 'ko' ? '대출 상세' : 'Detalhes do Empréstimo'}`;
         }
 
-        // 대출 상세 내역 모달 열기
+        // 대출 상세 내역 모달 열기 (스택 바 차트)
         function showLoanDetail() {
             const t = (key) => translations[currentLang][key] || key;
             const currentMonth = today.getMonth() + 1;
 
-            document.getElementById('loanDetailTitle').textContent = `💳 ${t('loanRepayment')}`;
+            document.getElementById('loanDetailTitle').textContent = `💳 ${t('loanRepayment')} - ${currentMonth}${t('month')}`;
             document.getElementById('loanDetailModal').classList.add('active');
 
             let html = '';
@@ -1435,36 +1452,43 @@
             loanData.forEach((loan, idx) => {
                 const colors = ['#667eea', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899'];
                 const color = colors[idx % colors.length];
+                const currentMonthData = loan.monthlyData[currentMonth - 1];
+
+                // 잔여 회차는 백엔드에서 가져온 데이터 사용
+                const remainingMonths = currentMonthData.remainingMonths || 0;
+
+                // 총 잔액 대비 월 상환액 비율 계산
+                const totalBalance = currentMonthData.remainingBalance;
+                const monthlyPayment = currentMonthData.payment;
+                const paymentPercentage = totalBalance > 0 ? (monthlyPayment / totalBalance) * 100 : 0;
 
                 html += `
-                    <div style="margin-bottom: 24px; padding: 16px; background: #f9fafb; border-radius: 12px; border-left: 4px solid ${color};">
-                        <div style="margin-bottom: 12px;">
-                            <div style="font-size: 16px; font-weight: 700; color: #333; margin-bottom: 6px;">${loan.lender}</div>
-                            <div style="font-size: 11px; color: #666;">
-                                ${t('paymentDay')}: ${loan.paymentDay}일 | ${loan.method}
+                    <div style="margin-bottom: 20px;">
+                        <!-- 대출 기관명 및 정보 -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <div style="font-size: 13px; font-weight: 700; color: #333;">${loan.lender}</div>
+                            <div style="font-size: 10px; color: #666;">
+                                ${t('paymentDay')}: ${loan.paymentDay}일 | ${remainingMonths}${currentLang === 'ko' ? '회차' : ' vezes'}
                             </div>
                         </div>
 
-                        <!-- 12개월 그리드 -->
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px;">
-                            ${loan.monthlyData.map((monthData, monthIdx) => {
-                                const isCurrentMonth = (monthIdx + 1) === currentMonth;
-                                return `
-                                    <div style="padding: 10px; background: ${isCurrentMonth ? color : 'white'};
-                                                color: ${isCurrentMonth ? 'white' : '#333'}; border-radius: 8px;
-                                                border: 1px solid ${isCurrentMonth ? color : '#e5e7eb'};">
-                                        <div style="font-size: 10px; font-weight: 600; margin-bottom: 6px;">
-                                            ${monthIdx + 1}${t('month')}
-                                        </div>
-                                        <div style="font-size: 9px; margin-bottom: 2px; opacity: ${isCurrentMonth ? '0.9' : '0.7'};">
-                                            상환: ₩${(monthData.payment / 10000).toFixed(1)}만
-                                        </div>
-                                        <div style="font-size: 9px; opacity: ${isCurrentMonth ? '0.9' : '0.7'};">
-                                            잔액: ₩${(monthData.remainingBalance / 10000).toFixed(0)}만
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
+                        <!-- 스택 막대 차트 -->
+                        <div style="position: relative; height: 32px; background: #f3f4f6; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
+                            <!-- 월 상환액 바 (진하게) -->
+                            <div style="position: absolute; left: 0; top: 0; width: ${paymentPercentage}%; height: 100%; background: ${color}; display: flex; align-items: center; padding-left: 8px;">
+                                <span style="font-size: 10px; font-weight: 700; color: white;">-₩${(monthlyPayment / 10000).toFixed(1)}만</span>
+                            </div>
+
+                            <!-- 잔여 잔액 바 (연하게) -->
+                            <div style="position: absolute; left: ${paymentPercentage}%; top: 0; width: ${100 - paymentPercentage}%; height: 100%; background: ${color}; opacity: 0.3; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 10px; font-weight: 600; color: #333;">₩${(totalBalance / 10000).toFixed(0)}만</span>
+                            </div>
+                        </div>
+
+                        <!-- 하단 정보 -->
+                        <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 9px; color: #999;">
+                            <span>${currentLang === 'ko' ? '월 상환액' : 'Pagamento'}</span>
+                            <span>${currentLang === 'ko' ? '총 잔액' : 'Saldo Total'}</span>
                         </div>
                     </div>
                 `;
