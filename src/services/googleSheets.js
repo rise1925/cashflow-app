@@ -107,35 +107,8 @@ class GoogleSheetsService {
                 console.log(`✅ ${monthCode}월: 수입=₩${monthIncome.toLocaleString()}, 지출=₩${monthExpense.toLocaleString()}, 월말잔고=₩${monthEndBalance.toLocaleString()}`);
             }
 
-            // 여행 수익 추가 (B16:17, F/I/L.../AN 16:17) - 대출 행 추가로 +1
-            await sheet.loadCells('B16:AN17');
-
-            console.log('🌏 여행 수익 데이터 로딩...');
-
-            // 16행, 17행에서 날짜 확인 (대출 행 추가로 +1)
-            for (let rowIdx = 15; rowIdx <= 16; rowIdx++) { // 0-indexed: 15, 16
-                const dateCell = sheet.getCell(rowIdx, 1); // B열
-                const itemCell = sheet.getCell(rowIdx, 3); // D열
-
-                console.log(`  행 ${rowIdx + 1}: 날짜=${dateCell.value}, 항목=${itemCell.value}`);
-
-                // 1~12월 각각의 수익 열 확인
-                for (let month = 1; month <= 12; month++) {
-                    const monthCode = String(month).padStart(2, '0');
-                    const cols = getMonthColumns(month);
-
-                    // 여행 수익은 income 열(F, I, L, ...)에서 가져오기
-                    const travelIncomeCell = sheet.getCell(rowIdx, cols.income);
-                    const travelIncome = this._parseNumber(travelIncomeCell.value);
-
-                    if (travelIncome > 0) {
-                        monthlyData[monthCode].income += travelIncome;
-                        console.log(`    💰 ${monthCode}월 여행 수익 추가: ₩${travelIncome.toLocaleString()}`);
-                    }
-                }
-            }
-
-            console.log(`✅ ${Object.keys(monthlyData).length}개월 데이터 조회 완료 (여행 수익 포함)`);
+            // E82/F82는 이미 E16:E17 + E27:E35 + E37:E81의 합계이므로 추가 집계 불필요
+            console.log(`✅ ${Object.keys(monthlyData).length}개월 데이터 조회 완료 (E82/F82는 모든 행 포함)`);
             return monthlyData;
         } catch (error) {
             console.error('❌ 월별 데이터 조회 실패:', error);
@@ -185,12 +158,50 @@ class GoogleSheetsService {
 
             const cols = getMonthColumns(month);
 
-            // B27:AN81 범위 로드 (27~35행: 특수항목, 37~81행: 일일 데이터) - 대출 행 추가로 +1
+            // B16:AN17, B27:AN81 범위 로드 (16~17행: 여행 수익/지출, 27~35행: 특수항목, 37~81행: 일일 데이터)
+            await sheet.loadCells('B16:AN17');
             await sheet.loadCells('B27:AN81');
 
             const details = [];
+            const year = new Date().getFullYear();
+            const daysInMonth = new Date(year, month, 0).getDate();
+
+            // 16~17행에서 여행 수익/지출 추가
+            console.log(`  🔍 여행 데이터 체크 - ${month}월 열 위치: expense=${cols.expense}, income=${cols.income}`);
+            for (let rowIdx = 15; rowIdx <= 16; rowIdx++) {
+                const itemCell = sheet.getCell(rowIdx, 3); // D16, D17 - 항목명
+                const expenseCell = sheet.getCell(rowIdx, cols.expense); // E16/E17 (Jan), Q16/Q17 (May)
+                const incomeCell = sheet.getCell(rowIdx, cols.income); // F16/F17 (Jan), R16/R17 (May)
+
+                const item = itemCell.value ? String(itemCell.value).trim() : '여행 수익 & 지출';
+                const expense = Math.abs(this._parseNumber(expenseCell.value));
+                const income = this._parseNumber(incomeCell.value);
+
+                console.log(`  🔍 Row ${rowIdx + 1}: 항목="${item}", 원본 지출=${expenseCell.value}, 원본 수입=${incomeCell.value}`);
+                console.log(`  🔍 Row ${rowIdx + 1}: 파싱 후 지출=₩${expense.toLocaleString()}, 수입=₩${income.toLocaleString()}`);
+
+                if (expense > 0 || income > 0) {
+                    // Row 16은 1일에, Row 17은 월말에 추가
+                    const targetDay = rowIdx === 15 ? 1 : daysInMonth;
+
+                    details.push({
+                        date: targetDay,
+                        category: '여행',
+                        item: item,
+                        expense: expense,
+                        income: income,
+                        balance: 0
+                    });
+
+                    console.log(`  ✅ 여행 데이터 추가 (${month}월 ${targetDay}일): ${item} - 지출=₩${expense.toLocaleString()}, 수입=₩${income.toLocaleString()}`);
+                } else {
+                    console.log(`  ⚠️ Row ${rowIdx + 1}: 지출/수입이 0이므로 추가하지 않음`);
+                }
+            }
+
             const specialItems = []; // 27~35행 특수 항목 수집
 
+            console.log(`  🔍 특수 항목 체크 (27~35행)`);
             // 27~35행 순회 (특수 항목들, 0-indexed: 26~34)
             for (let row = 26; row < 35; row++) {
                 const dateCell = sheet.getCell(row, 1); // B열 = 발생 주기 (예: "매주 수요일")
@@ -205,20 +216,25 @@ class GoogleSheetsService {
                 const totalExpense = Math.abs(this._parseNumber(expenseCell.value));
                 const totalIncome = this._parseNumber(incomeCell.value);
 
-                // 지출이나 수입이 있고 발생 주기가 있으면 특수 항목으로 수집
-                if ((totalExpense > 0 || totalIncome > 0) && frequency) {
+                console.log(`  🔍 Row ${row + 1}: 항목="${item}", 발생주기="${frequency}", 지출=₩${totalExpense.toLocaleString()}, 수입=₩${totalIncome.toLocaleString()}`);
+
+                // 지출이나 수입이 있으면 특수 항목으로 수집 (발생 주기가 없으면 1일로 설정)
+                if (totalExpense > 0 || totalIncome > 0) {
+                    const effectiveFrequency = frequency || '1일'; // 발생 주기가 없으면 매월 1일로 기본 설정
                     specialItems.push({
-                        frequency: frequency,
+                        frequency: effectiveFrequency,
                         category: category,
                         item: item,
                         totalExpense: totalExpense,
                         totalIncome: totalIncome
                     });
+                    console.log(`  ✅ 특수 항목 추가: ${item} (발생주기: ${effectiveFrequency})`);
+                } else if (item) {
+                    console.log(`  ⚠️ Row ${row + 1}: 지출/수입이 0이므로 제외`);
                 }
             }
 
             // 특수 항목을 실제 날짜로 분배
-            const year = new Date().getFullYear();
             specialItems.forEach(specialItem => {
                 const dates = this._getOccurrenceDates(specialItem.frequency, month, year);
                 const occurrenceCount = dates.length;
@@ -673,8 +689,27 @@ class GoogleSheetsService {
      * @returns {Array<number>} - 날짜 배열 (예: [7, 14, 21, 28])
      */
     _getOccurrenceDates(frequency, month, year) {
-        const freq = frequency.toLowerCase().trim();
+        let freq = frequency.trim();
         const dates = [];
+
+        // 0. Excel 날짜 시리얼 번호 처리 (예: "46113")
+        if (/^\d{5,}$/.test(freq)) {
+            const serialNumber = parseInt(freq, 10);
+            // Excel 날짜를 Date 객체로 변환
+            const excelEpoch = new Date(1900, 0, 1);
+            const days = serialNumber - 2; // Excel 버그 보정
+            const date = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
+
+            // 해당 날짜가 현재 조회 중인 월과 일치하면 반환
+            if (date.getMonth() + 1 === month && date.getFullYear() === year) {
+                dates.push(date.getDate());
+                return dates;
+            }
+            // 다른 월이면 빈 배열 반환
+            return dates;
+        }
+
+        freq = freq.toLowerCase();
 
         // 1. 매주 X요일
         if (freq.includes('매주')) {

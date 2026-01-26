@@ -1045,6 +1045,11 @@
             document.getElementById('tabDashboardText').textContent = t('tabDashboard');
             document.getElementById('tabLoanText').textContent = t('tabLoan');
 
+            // 대출 탭이 활성화되어 있으면 다시 렌더링
+            if (document.getElementById('loan-section').style.display === 'block') {
+                renderLoanData();
+            }
+
             // UI 업데이트
             updateUI();
         }
@@ -1366,13 +1371,17 @@
                     <!-- 이번달 상환액 -->
                     <div style="padding: 16px; background: linear-gradient(135deg, #fef3c7 0%, #fca5a5 100%); border-radius: 12px;">
                         <div style="font-size: 10px; color: #7c2d12; margin-bottom: 4px;">${currentLang === 'ko' ? '이번달 상환액' : 'Pagamento'}</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #991b1b;">-₩${(totalMonthlyPayment / 10000).toFixed(0)}만</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #991b1b;">
+                            ${currentLang === 'ko' ? `-₩${(totalMonthlyPayment / 10000).toFixed(0)}만` : `-₩${totalMonthlyPayment.toLocaleString()}`}
+                        </div>
                     </div>
 
                     <!-- 총 잔여 대출액 -->
                     <div style="padding: 16px; background: linear-gradient(135deg, #ddd6fe 0%, #c7d2fe 100%); border-radius: 12px;">
                         <div style="font-size: 10px; color: #4c1d95; margin-bottom: 4px;">${t('remainingBalance')}</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #5b21b6;">₩${(totalRemainingBalance / 10000).toFixed(0)}만</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #5b21b6;">
+                            ${currentLang === 'ko' ? `₩${(totalRemainingBalance / 10000).toFixed(0)}만` : `₩${totalRemainingBalance.toLocaleString()}`}
+                        </div>
                     </div>
                 </div>
             `;
@@ -1406,7 +1415,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                             <div style="font-size: 12px; font-weight: 700; color: #333;">${loan.lender}</div>
                             <div style="font-size: 9px; color: #666;">
-                                ${remainingMonths}${currentLang === 'ko' ? '회' : 'x'} | ${loan.paymentDay}${currentLang === 'ko' ? '일' : 'th'}
+                                ${remainingMonths}${currentLang === 'ko' ? '회' : 'x'} | ${currentLang === 'ko' ? loan.paymentDay + '일' : 'Dia ' + loan.paymentDay}
                             </div>
                         </div>
 
@@ -1414,19 +1423,23 @@
                         <div style="position: relative; height: 28px; background: #f3f4f6; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb;">
                             <!-- 월 상환액 (왼쪽 30%) -->
                             <div style="position: absolute; left: 0; top: 0; width: 30%; height: 100%; background: ${color}; display: flex; align-items: center; justify-content: center;">
-                                <span style="font-size: 9px; font-weight: 700; color: white;">-₩${(monthlyPayment / 10000).toFixed(1)}만</span>
+                                <span style="font-size: 9px; font-weight: 700; color: white;">
+                                    ${currentLang === 'ko' ? `-₩${(monthlyPayment / 10000).toFixed(1)}만` : `-₩${monthlyPayment.toLocaleString()}`}
+                                </span>
                             </div>
 
                             <!-- 총 잔액 (오른쪽 70%) -->
                             <div style="position: absolute; left: 30%; top: 0; width: 70%; height: 100%; background: ${color}; opacity: 0.25; display: flex; align-items: center; justify-content: center;">
-                                <span style="font-size: 9px; font-weight: 700; color: #333;">₩${(totalBalance / 10000).toFixed(0)}만</span>
+                                <span style="font-size: 9px; font-weight: 700; color: #333;">
+                                    ${currentLang === 'ko' ? `₩${(totalBalance / 10000).toFixed(0)}만` : `₩${totalBalance.toLocaleString()}`}
+                                </span>
                             </div>
                         </div>
 
                         <!-- 라벨 -->
                         <div style="display: flex; margin-top: 3px; font-size: 8px; color: #999;">
-                            <div style="width: 30%; text-align: center;">${currentLang === 'ko' ? '월상환' : 'Pagamento'}</div>
-                            <div style="width: 70%; text-align: center;">${currentLang === 'ko' ? '총잔액' : 'Saldo'}</div>
+                            <div style="width: 30%; text-align: center;">${t('monthlyPayment')}</div>
+                            <div style="width: 70%; text-align: center;">${t('remainingBalance')}</div>
                         </div>
                     </div>
                 `;
