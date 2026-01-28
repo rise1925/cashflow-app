@@ -652,6 +652,108 @@
             color: #666;
             font-weight: 600;
         }
+
+        /* 저금통 스타일 */
+        .piggy-bank {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 2px solid #e5e7eb;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .piggy-bank:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+
+        /* 금액별 색상은 JavaScript에서 동적으로 설정 */
+
+        .piggy-bank-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .piggy-bank-month {
+            font-size: 13px;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .piggy-bank-amount {
+            font-size: 16px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+
+        .piggy-bank-items {
+            font-size: 10px;
+            color: #6b7280;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .summary-item-label {
+            color: #666;
+            font-weight: 600;
+        }
+
+        .summary-item-value {
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .expense-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .expense-item-info {
+            flex: 1;
+        }
+
+        .expense-item-month {
+            font-size: 11px;
+            color: #667eea;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .expense-item-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 2px;
+        }
+
+        .expense-item-category {
+            font-size: 10px;
+            color: #999;
+        }
+
+        .expense-item-amount {
+            font-size: 15px;
+            font-weight: 700;
+            color: #ef4444;
+        }
     </style>
 </head>
 <body>
@@ -772,6 +874,35 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Savings Goals Section -->
+            <div class="section" id="savings-section" style="display: none;">
+                <div class="card">
+                    <div class="card-header" style="margin-bottom: 14px;" id="savingsGoalsHeader">🏦 월별 필요 저금량</div>
+                    <div style="font-size: 11px; color: #666; margin-bottom: 16px;" id="savingsGoalsDesc">여행, 종합소득세 등 특수 지출을 위한 월별 저축 목표입니다</div>
+
+                    <!-- 월별 저금통 그리드 -->
+                    <div id="savingsGoalsGrid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                        <!-- JavaScript로 동적 생성 -->
+                    </div>
+                </div>
+
+                <!-- 연간 저축 목표 요약 -->
+                <div class="card">
+                    <div class="card-header" style="margin-bottom: 14px;" id="yearSummaryHeader">📈 연간 저축 목표 요약</div>
+                    <div id="yearSavingsSummary" style="display: grid; gap: 10px;">
+                        <!-- JavaScript로 동적 생성 -->
+                    </div>
+                </div>
+
+                <!-- 주요 지출 항목 -->
+                <div class="card">
+                    <div class="card-header" style="margin-bottom: 14px;" id="majorExpensesHeader">💰 주요 지출 항목</div>
+                    <div id="majorExpensesList">
+                        <!-- JavaScript로 동적 생성 -->
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- 하단 네비게이션 바 -->
@@ -783,6 +914,10 @@
             <button onclick="switchTab('loan')" id="tabLoan" style="flex: 1; padding: 14px 0; border: none; background: white; color: #999; font-size: 13px; font-weight: 600; cursor: pointer; border-top: 3px solid transparent; transition: all 0.3s;">
                 <div>💳</div>
                 <div style="font-size: 10px; margin-top: 4px;" id="tabLoanText">대출상태</div>
+            </button>
+            <button onclick="switchTab('savings')" id="tabSavings" style="flex: 1; padding: 14px 0; border: none; background: white; color: #999; font-size: 13px; font-weight: 600; cursor: pointer; border-top: 3px solid transparent; transition: all 0.3s;">
+                <div>🏦</div>
+                <div style="font-size: 10px; margin-top: 4px;" id="tabSavingsText">필요저금량</div>
             </button>
         </div>
 
@@ -849,6 +984,9 @@
         let loanData = [];
         let loanViewVisible = false;
 
+        // 저금통 데이터 (백엔드 API에서 로드됨)
+        let savingsGoalsData = {};
+
         // 카드 한도 정보 (Google Sheets에서 로드됨)
         let cardInfo = {
             samsung: { limit: 0, used: 0, remaining: 0 },
@@ -899,6 +1037,11 @@
                 remainingBalance: '잔여 대출 잔액',
                 tabDashboard: '가계부',
                 tabLoan: '대출상태',
+                tabSavings: '필요저금량',
+                savingsGoalsHeader: '🏦 월별 필요 저금량',
+                savingsGoalsDesc: '여행, 종합소득세 등 특수 지출을 위한 월별 저축 목표입니다',
+                yearSummaryHeader: '📈 연간 저축 목표 요약',
+                majorExpensesHeader: '💰 주요 지출 항목',
                 days: ['일', '월', '화', '수', '목', '금', '토'],
                 months: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월']
             },
@@ -939,6 +1082,11 @@
                 remainingBalance: 'Saldo Devedor',
                 tabDashboard: 'Finanças',
                 tabLoan: 'Empréstimos',
+                tabSavings: 'Metas de Poupança',
+                savingsGoalsHeader: '🏦 Metas de Poupança Mensais',
+                savingsGoalsDesc: 'Metas mensais de poupança para despesas especiais como viagens, impostos, etc.',
+                yearSummaryHeader: '📈 Resumo Anual de Poupança',
+                majorExpensesHeader: '💰 Principais Despesas',
                 days: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
                 months: ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'],
                 items: {
@@ -1044,10 +1192,22 @@
             // 탭 텍스트 업데이트
             document.getElementById('tabDashboardText').textContent = t('tabDashboard');
             document.getElementById('tabLoanText').textContent = t('tabLoan');
+            document.getElementById('tabSavingsText').textContent = t('tabSavings');
+
+            // 저금통 섹션 헤더 업데이트
+            document.getElementById('savingsGoalsHeader').textContent = t('savingsGoalsHeader');
+            document.getElementById('savingsGoalsDesc').textContent = t('savingsGoalsDesc');
+            document.getElementById('yearSummaryHeader').textContent = t('yearSummaryHeader');
+            document.getElementById('majorExpensesHeader').textContent = t('majorExpensesHeader');
 
             // 대출 탭이 활성화되어 있으면 다시 렌더링
             if (document.getElementById('loan-section').style.display === 'block') {
                 renderLoanData();
+            }
+
+            // 저금통 탭이 활성화되어 있으면 다시 렌더링
+            if (document.getElementById('savings-section').style.display === 'block') {
+                renderSavingsGoals();
             }
 
             // UI 업데이트
@@ -1307,37 +1467,72 @@
             }
         }
 
+        // 저금통 데이터 로드
+        async function loadSavingsGoals() {
+            try {
+                const response = await fetch('/api/savings-goals');
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    savingsGoalsData = result.data;
+                    console.log('✅ 저금통 데이터 로드 성공:', Object.keys(savingsGoalsData).length, '개월');
+                    return true;
+                } else {
+                    console.error('❌ 저금통 데이터 로드 실패:', result.error);
+                    return false;
+                }
+            } catch (error) {
+                console.error('❌ 저금통 데이터 API 호출 실패:', error);
+                return false;
+            }
+        }
+
         // 탭 전환 함수
         function switchTab(tab) {
             const t = (key) => translations[currentLang][key] || key;
 
+            // 모든 섹션 숨기기
+            document.getElementById('dashboard-section').style.display = 'none';
+            document.getElementById('loan-section').style.display = 'none';
+            document.getElementById('savings-section').style.display = 'none';
+
+            // 모든 탭 비활성화
+            document.getElementById('tabDashboard').style.background = 'white';
+            document.getElementById('tabDashboard').style.color = '#999';
+            document.getElementById('tabDashboard').style.borderTopColor = 'transparent';
+
+            document.getElementById('tabLoan').style.background = 'white';
+            document.getElementById('tabLoan').style.color = '#999';
+            document.getElementById('tabLoan').style.borderTopColor = 'transparent';
+
+            document.getElementById('tabSavings').style.background = 'white';
+            document.getElementById('tabSavings').style.color = '#999';
+            document.getElementById('tabSavings').style.borderTopColor = 'transparent';
+
             if (tab === 'dashboard') {
                 // 가계부 탭 활성화
                 document.getElementById('dashboard-section').style.display = 'block';
-                document.getElementById('loan-section').style.display = 'none';
-
                 document.getElementById('tabDashboard').style.background = '#667eea';
                 document.getElementById('tabDashboard').style.color = 'white';
                 document.getElementById('tabDashboard').style.borderTopColor = '#667eea';
-
-                document.getElementById('tabLoan').style.background = 'white';
-                document.getElementById('tabLoan').style.color = '#999';
-                document.getElementById('tabLoan').style.borderTopColor = 'transparent';
             } else if (tab === 'loan') {
                 // 대출 탭 활성화
-                document.getElementById('dashboard-section').style.display = 'none';
                 document.getElementById('loan-section').style.display = 'block';
-
-                document.getElementById('tabDashboard').style.background = 'white';
-                document.getElementById('tabDashboard').style.color = '#999';
-                document.getElementById('tabDashboard').style.borderTopColor = 'transparent';
-
                 document.getElementById('tabLoan').style.background = '#667eea';
                 document.getElementById('tabLoan').style.color = 'white';
                 document.getElementById('tabLoan').style.borderTopColor = '#667eea';
 
                 // 대출 데이터 렌더링
                 renderLoanData();
+            } else if (tab === 'savings') {
+                // 저금통 탭 활성화
+                document.getElementById('savings-section').style.display = 'block';
+                document.getElementById('tabSavings').style.background = '#667eea';
+                document.getElementById('tabSavings').style.color = 'white';
+                document.getElementById('tabSavings').style.borderTopColor = '#667eea';
+
+                // 저금통 데이터 렌더링
+                renderSavingsGoals();
             }
         }
 
@@ -1450,6 +1645,231 @@
             // 헤더 번역 업데이트
             document.getElementById('loanSummaryHeader').textContent = t('loanRepayment');
             document.getElementById('loanDetailHeader').textContent = `📊 ${currentLang === 'ko' ? '대출 상세' : 'Detalhes do Empréstimo'}`;
+        }
+
+        // 금액에 따른 색상 계산 (0원=녹색, 1000만원=빨간색)
+        function getColorByAmount(amount) {
+            if (amount === 0) {
+                return {
+                    bg: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+                    border: '#10b981',
+                    icon: '⚪'
+                };
+            }
+
+            // 최대 금액을 1000만원으로 설정
+            const maxAmount = 10000000;
+            const ratio = Math.min(amount / maxAmount, 1);
+
+            // 녹색(0) -> 노란색(0.5) -> 빨간색(1)
+            let r, g, b;
+            if (ratio < 0.5) {
+                // 녹색 -> 노란색
+                const localRatio = ratio * 2;
+                r = Math.round(16 + (251 - 16) * localRatio);   // 16 -> 251
+                g = Math.round(185 + (191 - 185) * localRatio);  // 185 -> 191
+                b = Math.round(129 + (36 - 129) * localRatio);   // 129 -> 36
+            } else {
+                // 노란색 -> 빨간색
+                const localRatio = (ratio - 0.5) * 2;
+                r = Math.round(251 + (239 - 251) * localRatio);  // 251 -> 239
+                g = Math.round(191 + (68 - 191) * localRatio);   // 191 -> 68
+                b = Math.round(36 + (68 - 36) * localRatio);     // 36 -> 68
+            }
+
+            const lightR = Math.round(r + (255 - r) * 0.7);
+            const lightG = Math.round(g + (255 - g) * 0.7);
+            const lightB = Math.round(b + (255 - b) * 0.7);
+
+            const lighterR = Math.round(r + (255 - r) * 0.85);
+            const lighterG = Math.round(g + (255 - g) * 0.85);
+            const lighterB = Math.round(b + (255 - b) * 0.85);
+
+            // 이모지 선택
+            let icon;
+            if (ratio < 0.3) {
+                icon = '🟢'; // 녹색: 0~300만원
+            } else if (ratio < 0.7) {
+                icon = '🟡'; // 노란색: 300~700만원
+            } else {
+                icon = '🔴'; // 빨간색: 700만원 이상
+            }
+
+            return {
+                bg: `linear-gradient(135deg, rgb(${lightR}, ${lightG}, ${lightB}) 0%, rgb(${lighterR}, ${lighterG}, ${lighterB}) 100%)`,
+                border: `rgb(${r}, ${g}, ${b})`,
+                icon: icon
+            };
+        }
+
+        // 저금통 데이터 렌더링
+        function renderSavingsGoals() {
+            const t = (key) => translations[currentLang][key] || key;
+
+            if (!savingsGoalsData || Object.keys(savingsGoalsData).length === 0) {
+                const noDataText = currentLang === 'ko' ? '저금 목표 데이터가 없습니다' : 'Não há dados de metas de poupança';
+                document.getElementById('savingsGoalsGrid').innerHTML = `<div style="text-align: center; padding: 40px; color: #999; grid-column: 1 / -1;">${noDataText}</div>`;
+                return;
+            }
+
+            // 1. 월별 저금통 그리드 렌더링
+            let gridHtml = '';
+            for (let month = 1; month <= 12; month++) {
+                const monthCode = String(month).padStart(2, '0');
+                const monthData = savingsGoalsData[monthCode];
+
+                if (!monthData) continue;
+
+                const hasGoal = monthData.totalGoal > 0;
+                const colors = getColorByAmount(monthData.totalGoal);
+
+                const monthText = currentLang === 'ko' ? `${month}월` : (currentLang === 'pt' ? translations.pt.months[month - 1] : `${month}월`);
+                const itemsText = hasGoal
+                    ? (currentLang === 'ko' ? `${monthData.items.length}개 항목` : `${monthData.items.length} itens`)
+                    : (currentLang === 'ko' ? '없음' : 'Nenhum');
+
+                gridHtml += `
+                    <div class="piggy-bank"
+                         onclick="showSavingsDetail(${month})"
+                         style="background: ${colors.bg}; border-color: ${colors.border};">
+                        <div class="piggy-bank-icon">${colors.icon}</div>
+                        <div class="piggy-bank-month">${monthText}</div>
+                        <div class="piggy-bank-amount">
+                            ${hasGoal ? `₩${(monthData.totalGoal / 10000).toFixed(0)}${currentLang === 'ko' ? '만' : 'M'}` : '-'}
+                        </div>
+                        <div class="piggy-bank-items">${itemsText}</div>
+                    </div>
+                `;
+            }
+            document.getElementById('savingsGoalsGrid').innerHTML = gridHtml;
+
+            // 2. 연간 저축 목표 요약
+            let totalYearGoal = 0;
+            let monthsWithGoals = 0;
+            let majorExpenseMonths = [];
+
+            Object.keys(savingsGoalsData).forEach(monthCode => {
+                const monthData = savingsGoalsData[monthCode];
+                if (monthData.totalGoal > 0) {
+                    totalYearGoal += monthData.totalGoal;
+                    monthsWithGoals++;
+                    if (monthData.isMajorExpense) {
+                        majorExpenseMonths.push(monthData.month);
+                    }
+                }
+            });
+
+            const summaryHtml = `
+                <div class="summary-item">
+                    <span class="summary-item-label">📅 ${currentLang === 'ko' ? '저축 필요 개월수' : 'Meses de Poupança Necessária'}</span>
+                    <span class="summary-item-value">${monthsWithGoals}${currentLang === 'ko' ? '개월' : ' meses'}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-item-label">💰 ${currentLang === 'ko' ? '연간 총 저축 목표' : 'Meta de Poupança Anual'}</span>
+                    <span class="summary-item-value">₩${totalYearGoal.toLocaleString('ko-KR')}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-item-label">📊 ${currentLang === 'ko' ? '월평균 저축액' : 'Poupança Média Mensal'}</span>
+                    <span class="summary-item-value">₩${Math.round(totalYearGoal / 12).toLocaleString('ko-KR')}</span>
+                </div>
+                ${majorExpenseMonths.length > 0 ? `
+                    <div class="summary-item" style="background: #fee2e2;">
+                        <span class="summary-item-label" style="color: #991b1b;">⚠️ ${currentLang === 'ko' ? '주요 지출 월' : 'Meses de Grandes Despesas'}</span>
+                        <span class="summary-item-value" style="color: #991b1b;">${majorExpenseMonths.map(m => currentLang === 'ko' ? `${m}월` : translations.pt.months[m - 1]).join(', ')}</span>
+                    </div>
+                ` : ''}
+            `;
+            document.getElementById('yearSavingsSummary').innerHTML = summaryHtml;
+
+            // 3. 주요 지출 항목 리스트
+            const allItems = [];
+            Object.keys(savingsGoalsData).forEach(monthCode => {
+                const monthData = savingsGoalsData[monthCode];
+                if (monthData.items && monthData.items.length > 0) {
+                    monthData.items.forEach(item => {
+                        allItems.push({
+                            month: monthData.month,
+                            ...item
+                        });
+                    });
+                }
+            });
+
+            // 금액 순으로 정렬
+            allItems.sort((a, b) => b.amount - a.amount);
+
+            let listHtml = '';
+            if (allItems.length === 0) {
+                const noItemsText = currentLang === 'ko' ? '주요 지출 항목이 없습니다' : 'Não há itens de despesas principais';
+                listHtml = `<div style="text-align: center; padding: 20px; color: #999;">${noItemsText}</div>`;
+            } else {
+                allItems.forEach(item => {
+                    const monthText = currentLang === 'ko' ? `${item.month}월` : translations.pt.months[item.month - 1];
+                    listHtml += `
+                        <div class="expense-item">
+                            <div class="expense-item-info">
+                                <div class="expense-item-month">${monthText}</div>
+                                <div class="expense-item-title">${item.item}</div>
+                                <div class="expense-item-category">${item.category}</div>
+                            </div>
+                            <div class="expense-item-amount">₩${item.amount.toLocaleString('ko-KR')}</div>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('majorExpensesList').innerHTML = listHtml;
+        }
+
+        // 저금통 상세 보기 (모달)
+        function showSavingsDetail(month) {
+            const monthCode = String(month).padStart(2, '0');
+            const monthData = savingsGoalsData[monthCode];
+
+            const monthText = currentLang === 'ko' ? `${month}월` : translations.pt.months[month - 1];
+
+            if (!monthData || !monthData.items || monthData.items.length === 0) {
+                const alertText = currentLang === 'ko'
+                    ? `${month}월에는 저축 목표가 없습니다.`
+                    : `Não há meta de poupança para ${monthText}.`;
+                alert(alertText);
+                return;
+            }
+
+            const goalTitle = currentLang === 'ko' ? `${month}월 저금 목표` : `Meta de Poupança - ${monthText}`;
+            const itemsTitle = currentLang === 'ko' ? '지출 항목' : 'Itens de Despesas';
+
+            let html = `
+                <div style="margin-bottom: 16px; padding: 16px; background: linear-gradient(135deg, #fef3c7 0%, #fef9c3 100%); border-radius: 12px;">
+                    <div style="font-size: 18px; font-weight: 700; color: #92400e; margin-bottom: 8px;">
+                        ${goalTitle}
+                    </div>
+                    <div style="font-size: 24px; font-weight: 700; color: #b45309;">
+                        ₩${monthData.totalGoal.toLocaleString('ko-KR')}
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">📋 ${itemsTitle}</div>
+            `;
+
+            monthData.items.forEach(item => {
+                html += `
+                    <div class="detail-item">
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 2px;">${item.item}</div>
+                            <div style="font-size: 10px; color: #999;">${item.category}</div>
+                        </div>
+                        <span class="detail-item-value negative">₩${item.amount.toLocaleString('ko-KR')}</span>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
+            // 모달에 표시 (월별 상세 내역 모달 재활용)
+            document.getElementById('monthDetailTitle').textContent = `🏦 ${goalTitle}`;
+            document.getElementById('monthDetailContent').innerHTML = html;
+            document.getElementById('monthDetailModal').classList.add('active');
         }
 
         // 대출 상세 내역 모달 열기 (스택 바 차트)
@@ -2422,16 +2842,20 @@
                 // 백엔드에서 대출 데이터 로드 (병렬)
                 const loanDataLoaded = loadLoanData();
 
-                // 다섯 데이터가 모두 로드될 때까지 대기
-                const [monthlySuccess, itemsSuccess, balanceSuccess, monthEndSuccess, loanSuccess] = await Promise.all([
+                // 백엔드에서 저금통 데이터 로드 (병렬)
+                const savingsGoalsLoaded = loadSavingsGoals();
+
+                // 여섯 데이터가 모두 로드될 때까지 대기
+                const [monthlySuccess, itemsSuccess, balanceSuccess, monthEndSuccess, loanSuccess, savingsSuccess] = await Promise.all([
                     monthlyDataLoaded,
                     itemsLoaded,
                     balanceLoaded,
                     monthEndBalanceLoaded,
-                    loanDataLoaded
+                    loanDataLoaded,
+                    savingsGoalsLoaded
                 ]);
 
-                if (monthlySuccess && itemsSuccess && balanceSuccess && monthEndSuccess && loanSuccess) {
+                if (monthlySuccess && itemsSuccess && balanceSuccess && monthEndSuccess && loanSuccess && savingsSuccess) {
                     console.log('✅ 모든 데이터 로드 완료, UI 업데이트 중...');
                     updateUI();
                 } else {

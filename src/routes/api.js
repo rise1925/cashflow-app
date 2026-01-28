@@ -460,4 +460,27 @@ router.get('/loans', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/savings-goals
+ * 월별 필요 저금량 조회 (여행, 종합소득세 등 특수 항목)
+ */
+router.get('/savings-goals', async (req, res) => {
+    try {
+        const savingsGoals = await googleSheets.getMonthlySavingsGoals();
+
+        res.json({
+            success: true,
+            message: '월별 저금 목표 조회 성공',
+            data: savingsGoals
+        });
+    } catch (error) {
+        console.error('API 에러:', error);
+        res.status(500).json({
+            success: false,
+            error: '저금 목표 조회 실패',
+            message: error.message
+        });
+    }
+});
+
 module.exports = router;

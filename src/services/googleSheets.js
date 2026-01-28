@@ -904,6 +904,90 @@ class GoogleSheetsService {
     }
 
     /**
+     * 월별 필요 저금량 조회 (특수 항목 기반)
+     * 16~17행: 여행 수익/지출
+     * 27~35행: 종합소득세 등 특수 항목
+     */
+    async getMonthlySavingsGoals() {
+        try {
+            await this.initialize();
+
+            const sheet = this.doc.sheetsByIndex[0];
+            console.log('💰 월별 저금 목표 조회 중...');
+
+            // B16:AN35 범위 로드
+            await sheet.loadCells('B16:AN35');
+
+            const savingsGoals = {};
+
+            // 1~12월 반복
+            for (let month = 1; month <= 12; month++) {
+                const monthCode = String(month).padStart(2, '0');
+                const baseCol = 4 + (month - 1) * 3;
+
+                let totalSpecialExpense = 0;
+                const items = [];
+
+                // 16~17행: 여행 수익/지출
+                for (let row = 15; row <= 16; row++) {
+                    const itemCell = sheet.getCell(row, 3); // D열: 항목명
+                    const expenseCell = sheet.getCell(row, baseCol); // E, H, K, ... (지출)
+
+                    const item = itemCell.value ? String(itemCell.value).trim() : '여행 수익 & 지출';
+                    const expense = Math.abs(this._parseNumber(expenseCell.value));
+
+                    if (expense > 0) {
+                        totalSpecialExpense += expense;
+                        items.push({
+                            category: '여행',
+                            item: item,
+                            amount: expense
+                        });
+                        console.log(`  ${month}월 - ${item}: ₩${expense.toLocaleString()}`);
+                    }
+                }
+
+                // 27~35행: 특수 항목 (종합소득세 등)
+                for (let row = 26; row < 35; row++) {
+                    const categoryCell = sheet.getCell(row, 2); // C열: 카테고리
+                    const itemCell = sheet.getCell(row, 3); // D열: 항목명
+                    const expenseCell = sheet.getCell(row, baseCol); // E, H, K, ... (지출)
+
+                    const category = categoryCell.value ? String(categoryCell.value).trim() : '';
+                    const item = itemCell.value ? String(itemCell.value).trim() : '';
+                    const expense = Math.abs(this._parseNumber(expenseCell.value));
+
+                    if (expense > 0 && item) {
+                        totalSpecialExpense += expense;
+                        items.push({
+                            category: category,
+                            item: item,
+                            amount: expense
+                        });
+                        console.log(`  ${month}월 - ${item}: ₩${expense.toLocaleString()}`);
+                    }
+                }
+
+                savingsGoals[monthCode] = {
+                    month: month,
+                    totalGoal: totalSpecialExpense,
+                    items: items,
+                    isMajorExpense: totalSpecialExpense >= 5000000 // 500만원 이상이면 주요 지출
+                };
+
+                if (totalSpecialExpense > 0) {
+                    console.log(`✅ ${month}월 필요 저금량: ₩${totalSpecialExpense.toLocaleString()} (${items.length}개 항목)`);
+                }
+            }
+
+            return savingsGoals;
+        } catch (error) {
+            console.error('❌ 월별 저금 목표 조회 실패:', error.message);
+            throw error;
+        }
+    }
+
+    /**
      * 초기화 상태 확인
      */
     isInitialized() {
