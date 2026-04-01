@@ -75,9 +75,9 @@ class GoogleSheetsService {
                 };
             };
 
-            // 81~82행 로드: E81:AN82 (81행=월말잔고, 82행=Total) - 대출 행 추가로 +1
+            // 80~81행 로드: E80:AN81 (80행=월말잔고, 81행=Total)
             // 12월까지 포함: E(4), F(5), G(6) ... AL(37-expense), AM(38-income), AN(39-balance)
-            await sheet.loadCells('E81:AN82');
+            await sheet.loadCells('E80:AN81');
 
             const monthlyData = {};
 
@@ -86,12 +86,12 @@ class GoogleSheetsService {
                 const monthCode = String(month).padStart(2, '0');
                 const cols = getMonthColumns(month);
 
-                // 82행 (0-indexed: 81) - 지출, 수입 (Total)
-                const expenseCell = sheet.getCell(81, cols.expense); // E82, H82, K82...
-                const incomeCell = sheet.getCell(81, cols.income);   // F82, I82, L82...
+                // 81행 (0-indexed: 80) - Total
+                const expenseCell = sheet.getCell(80, cols.expense);
+                const incomeCell = sheet.getCell(80, cols.income);
 
-                // 81행 (0-indexed: 80) - 월말 누적 잔고
-                const balanceCell = sheet.getCell(80, cols.balance); // G81, J81, M81...
+                // 80행 (0-indexed: 79) - 월말 잔고
+                const balanceCell = sheet.getCell(79, cols.balance);
 
                 const monthExpense = Math.abs(this._parseNumber(expenseCell.value));
                 const monthIncome = this._parseNumber(incomeCell.value);
@@ -107,8 +107,35 @@ class GoogleSheetsService {
                 console.log(`✅ ${monthCode}월: 수입=₩${monthIncome.toLocaleString()}, 지출=₩${monthExpense.toLocaleString()}, 월말잔고=₩${monthEndBalance.toLocaleString()}`);
             }
 
-            // E82/F82는 이미 E16:E17 + E27:E35 + E37:E81의 합계이므로 추가 집계 불필요
-            console.log(`✅ ${Object.keys(monthlyData).length}개월 데이터 조회 완료 (E82/F82는 모든 행 포함)`);
+            // 여행 수익 추가 (B15:16, F/I/L.../AN 15:16)
+            await sheet.loadCells('B15:AN16');
+
+            console.log('🌏 여행 수익 데이터 로딩...');
+
+            // 15행, 16행에서 날짜 확인
+            for (let rowIdx = 14; rowIdx <= 15; rowIdx++) { // 0-indexed: 14, 15
+                const dateCell = sheet.getCell(rowIdx, 1); // B열
+                const itemCell = sheet.getCell(rowIdx, 3); // D열
+
+                console.log(`  행 ${rowIdx + 1}: 날짜=${dateCell.value}, 항목=${itemCell.value}`);
+
+                // 1~12월 각각의 수익 열 확인
+                for (let month = 1; month <= 12; month++) {
+                    const monthCode = String(month).padStart(2, '0');
+                    const cols = getMonthColumns(month);
+
+                    // 여행 수익은 income 열(F, I, L, ...)에서 가져오기
+                    const travelIncomeCell = sheet.getCell(rowIdx, cols.income);
+                    const travelIncome = this._parseNumber(travelIncomeCell.value);
+
+                    if (travelIncome > 0) {
+                        monthlyData[monthCode].income += travelIncome;
+                        console.log(`    💰 ${monthCode}월 여행 수익 추가: ₩${travelIncome.toLocaleString()}`);
+                    }
+                }
+            }
+
+            console.log(`✅ ${Object.keys(monthlyData).length}개월 데이터 조회 완료 (여행 수익 포함)`);
             return monthlyData;
         } catch (error) {
             console.error('❌ 월별 데이터 조회 실패:', error);
@@ -158,106 +185,43 @@ class GoogleSheetsService {
 
             const cols = getMonthColumns(month);
 
-            // B16:AN17, B27:AN81 범위 로드 (16~17행: 여행 수익/지출, 27~35행: 특수항목, 37~81행: 일일 데이터)
-            await sheet.loadCells('B16:AN17');
-            await sheet.loadCells('B27:AN81');
+            // B26:AN80 범위 로드 (26~34행: 특수항목, 36~80행: 일일 데이터)
+            await sheet.loadCells('B26:AN80');
 
             const details = [];
-            const year = new Date().getFullYear();
-            const daysInMonth = new Date(year, month, 0).getDate();
 
-            // 16~17행에서 여행 수익/지출 추가
-            console.log(`  🔍 여행 데이터 체크 - ${month}월 열 위치: expense=${cols.expense}, income=${cols.income}`);
-            for (let rowIdx = 15; rowIdx <= 16; rowIdx++) {
-                const itemCell = sheet.getCell(rowIdx, 3); // D16, D17 - 항목명
-                const expenseCell = sheet.getCell(rowIdx, cols.expense); // E16/E17 (Jan), Q16/Q17 (May)
-                const incomeCell = sheet.getCell(rowIdx, cols.income); // F16/F17 (Jan), R16/R17 (May)
-
-                const item = itemCell.value ? String(itemCell.value).trim() : '여행 수익 & 지출';
-                const expense = Math.abs(this._parseNumber(expenseCell.value));
-                const income = this._parseNumber(incomeCell.value);
-
-                console.log(`  🔍 Row ${rowIdx + 1}: 항목="${item}", 원본 지출=${expenseCell.value}, 원본 수입=${incomeCell.value}`);
-                console.log(`  🔍 Row ${rowIdx + 1}: 파싱 후 지출=₩${expense.toLocaleString()}, 수입=₩${income.toLocaleString()}`);
-
-                if (expense > 0 || income > 0) {
-                    // Row 16은 1일에, Row 17은 월말에 추가
-                    const targetDay = rowIdx === 15 ? 1 : daysInMonth;
-
-                    details.push({
-                        date: targetDay,
-                        category: '여행',
-                        item: item,
-                        expense: expense,
-                        income: income,
-                        balance: 0
-                    });
-
-                    console.log(`  ✅ 여행 데이터 추가 (${month}월 ${targetDay}일): ${item} - 지출=₩${expense.toLocaleString()}, 수입=₩${income.toLocaleString()}`);
-                } else {
-                    console.log(`  ⚠️ Row ${rowIdx + 1}: 지출/수입이 0이므로 추가하지 않음`);
-                }
-            }
-
-            const specialItems = []; // 27~35행 특수 항목 수집
-
-            console.log(`  🔍 특수 항목 체크 (27~35행)`);
-            // 27~35행 순회 (특수 항목들, 0-indexed: 26~34)
-            for (let row = 26; row < 35; row++) {
-                const dateCell = sheet.getCell(row, 1); // B열 = 발생 주기 (예: "매주 수요일")
+            // 26~34행 순회 (특수 항목들, 0-indexed: 25~33)
+            for (let row = 25; row < 34; row++) {
+                const dateCell = sheet.getCell(row, 1); // B열 = 날짜
                 const categoryCell = sheet.getCell(row, 2); // C열 = 카테고리
                 const itemCell = sheet.getCell(row, 3); // D열 = 항목명
                 const expenseCell = sheet.getCell(row, cols.expense);
                 const incomeCell = sheet.getCell(row, cols.income);
+                const balanceCell = sheet.getCell(row, cols.balance);
 
-                const frequency = dateCell.value ? String(dateCell.value).trim() : '';
+                // 날짜 파싱 (Excel 날짜, 텍스트, 숫자 처리)
+                const date = this._parseDateValue(dateCell.value);
                 const category = categoryCell.value ? String(categoryCell.value).trim() : '';
                 const item = itemCell.value ? String(itemCell.value).trim() : '';
-                const totalExpense = Math.abs(this._parseNumber(expenseCell.value));
-                const totalIncome = this._parseNumber(incomeCell.value);
+                const expense = Math.abs(this._parseNumber(expenseCell.value));
+                const income = this._parseNumber(incomeCell.value);
+                const balance = this._parseNumber(balanceCell.value);
 
-                console.log(`  🔍 Row ${row + 1}: 항목="${item}", 발생주기="${frequency}", 지출=₩${totalExpense.toLocaleString()}, 수입=₩${totalIncome.toLocaleString()}`);
-
-                // 지출이나 수입이 있으면 특수 항목으로 수집 (발생 주기가 없으면 1일로 설정)
-                if (totalExpense > 0 || totalIncome > 0) {
-                    const effectiveFrequency = frequency || '1일'; // 발생 주기가 없으면 매월 1일로 기본 설정
-                    specialItems.push({
-                        frequency: effectiveFrequency,
+                // 지출이나 수입이 있으면 추가 (특수 항목은 날짜/항목명이 없을 수 있음)
+                if (expense > 0 || income > 0 || item) {
+                    details.push({
+                        date: date,
                         category: category,
                         item: item,
-                        totalExpense: totalExpense,
-                        totalIncome: totalIncome
+                        expense: expense,
+                        income: income,
+                        balance: balance
                     });
-                    console.log(`  ✅ 특수 항목 추가: ${item} (발생주기: ${effectiveFrequency})`);
-                } else if (item) {
-                    console.log(`  ⚠️ Row ${row + 1}: 지출/수입이 0이므로 제외`);
                 }
             }
 
-            // 특수 항목을 실제 날짜로 분배
-            specialItems.forEach(specialItem => {
-                const dates = this._getOccurrenceDates(specialItem.frequency, month, year);
-                const occurrenceCount = dates.length;
-
-                if (occurrenceCount > 0) {
-                    const expensePerOccurrence = Math.round(specialItem.totalExpense / occurrenceCount);
-                    const incomePerOccurrence = Math.round(specialItem.totalIncome / occurrenceCount);
-
-                    dates.forEach(day => {
-                        details.push({
-                            date: day,
-                            category: specialItem.category,
-                            item: specialItem.item,
-                            expense: expensePerOccurrence,
-                            income: incomePerOccurrence,
-                            balance: 0 // 잔고는 나중에 계산
-                        });
-                    });
-                }
-            });
-
-            // 37~81행 순회 (일일 데이터, 0-indexed: 36~80) - 대출 행 추가로 +1
-            for (let row = 36; row < 81; row++) {
+            // 36~80행 순회 (일일 데이터, 0-indexed: 35~79)
+            for (let row = 35; row < 80; row++) {
                 const dateCell = sheet.getCell(row, 1); // B열 = 날짜
                 const categoryCell = sheet.getCell(row, 2); // C열 = 카테고리 (현금/카드)
                 const itemCell = sheet.getCell(row, 3); // D열 = 항목명
@@ -324,11 +288,11 @@ class GoogleSheetsService {
 
             const cols = getMonthColumns(currentMonth);
 
-            // B37:AN81 범위 로드 (B열=날짜) - 대출 행 추가로 +1
-            await sheet.loadCells('B37:AN81');
+            // B36:AN80 범위 로드 (B열=날짜)
+            await sheet.loadCells('B36:AN80');
 
-            // 37~81행에서 B열의 날짜가 오늘 날짜와 일치하는 행 찾기 (0-indexed: 36~80)
-            for (let row = 36; row < 81; row++) {
+            // 36~80행에서 B열의 날짜가 오늘 날짜와 일치하는 행 찾기
+            for (let row = 35; row < 80; row++) {
                 const dateCell = sheet.getCell(row, 1);
                 const rawValue = dateCell.value;
 
@@ -388,13 +352,13 @@ class GoogleSheetsService {
 
             const cols = getMonthColumns(currentMonth);
 
-            // 81행 로드 (0-indexed: 80) - 대출 행 추가로 +1
-            await sheet.loadCells('E81:AN81');
+            // 80행 로드 (0-indexed: 79)
+            await sheet.loadCells('E80:AN80');
 
-            const balanceCell = sheet.getCell(80, cols.balance);
+            const balanceCell = sheet.getCell(79, cols.balance);
             const monthEndBalance = this._parseNumber(balanceCell.value);
 
-            console.log(`✅ ${currentMonth}월 월말 예상 잔고 (81행): ₩${monthEndBalance.toLocaleString()}`);
+            console.log(`✅ ${currentMonth}월 월말 예상 잔고 (80행): ₩${monthEndBalance.toLocaleString()}`);
             return monthEndBalance;
         } catch (error) {
             console.error('❌ 월말 예상 잔고 조회 실패:', error.message);
@@ -402,99 +366,7 @@ class GoogleSheetsService {
         }
     }
 
-    /**
-     * 기준날짜/기준금액 및 항목 리스트 가져오기 (B70:F107)
-     */
-    async getBaseDataAndItems() {
-        try {
-            await this.initialize();
-
-            const sheet = this.doc.sheetsByIndex[0];
-
-            // B71:C71 읽기 (기준날짜, 기준금액) - 대출 행 추가로 +1
-            await sheet.loadCells('B71:C71');
-            const baseDateCell = sheet.getCell(70, 1); // B71 (0-indexed: 70)
-            const baseAmountCell = sheet.getCell(70, 2); // C71
-
-            const baseDate = baseDateCell.value ? new Date(baseDateCell.value) : new Date();
-            const baseAmount = this._parseNumber(baseAmountCell.value);
-
-            console.log(`📅 기준날짜: ${baseDate.toLocaleDateString('ko-KR')}`);
-            console.log(`💰 기준금액: ₩${baseAmount.toLocaleString()}`);
-
-            // C19:G20 읽기 (카드 정보) - 대출 행 추가로 +1
-            // C19=삼성카드 한도, D19=이름, G19=남은 한도
-            // C20=현대카드 한도, D20=이름, G20=남은 한도
-            await sheet.loadCells('C19:G20');
-            const samsungLimit = this._parseNumber(sheet.getCell(18, 2).value); // C19 (0-indexed: 18)
-            const samsungName = String(sheet.getCell(18, 3).value || '삼성카드').trim(); // D19
-            const samsungRemaining = this._parseNumber(sheet.getCell(18, 6).value); // G19
-            const samsungUsed = samsungLimit - samsungRemaining;
-
-            const hyundaiLimit = this._parseNumber(sheet.getCell(19, 2).value); // C20 (0-indexed: 19)
-            const hyundaiName = String(sheet.getCell(19, 3).value || '현대카드').trim(); // D20
-            const hyundaiRemaining = this._parseNumber(sheet.getCell(19, 6).value); // G20
-            const hyundaiUsed = hyundaiLimit - hyundaiRemaining;
-
-            console.log(`💳 ${samsungName}: 한도 ₩${samsungLimit.toLocaleString()}, 남은 ₩${samsungRemaining.toLocaleString()}, 사용 ₩${samsungUsed.toLocaleString()}`);
-            console.log(`💳 ${hyundaiName}: 한도 ₩${hyundaiLimit.toLocaleString()}, 남은 ₩${hyundaiRemaining.toLocaleString()}, 사용 ₩${hyundaiUsed.toLocaleString()}`);
-
-            // A74:F101 읽기 (항목 리스트 - 결제수단 포함) - 대출 행 추가로 +1
-            await sheet.loadCells('A74:F101');
-            const items = [];
-
-            for (let row = 73; row < 101; row++) { // A74부터 F101까지 (0-indexed: 73~100)
-                const paymentTypeCell = sheet.getCell(row, 0); // A열 = 결제수단 (현금/삼성카드/현대카드)
-                const frequencyCell = sheet.getCell(row, 1); // B열 = 발생 주기
-                const referenceCell = sheet.getCell(row, 2); // C열 = 참고 정보
-                const itemNameCell = sheet.getCell(row, 3); // D열 = 항목명
-                const expenseCell = sheet.getCell(row, 4); // E열 = 월별 지출액
-                const incomeCell = sheet.getCell(row, 5); // F열 = 월별 수입액
-
-                const paymentType = String(paymentTypeCell.value || '').trim();
-                const frequency = String(frequencyCell.value || '').trim();
-                const reference = String(referenceCell.value || '').trim();
-                const itemName = String(itemNameCell.value || '').trim();
-                const expense = this._parseNumber(expenseCell.value);
-                const income = this._parseNumber(incomeCell.value);
-
-                // 항목명이 있으면 추가
-                if (itemName) {
-                    items.push({
-                        paymentType: paymentType, // 현금 / 삼성카드 / 현대카드
-                        frequency: frequency, // 매월 / 매주 수요일 / 8월 1일 등
-                        reference: reference,
-                        itemName: itemName,
-                        expense: expense,
-                        income: income
-                    });
-                }
-            }
-
-            console.log(`✅ 항목 ${items.length}건 조회 성공`);
-            return {
-                baseDate: baseDate,
-                baseAmount: baseAmount,
-                items: items,
-                cardInfo: {
-                    hyundai: {
-                        limit: hyundaiLimit,
-                        used: hyundaiUsed,
-                        remaining: hyundaiLimit - hyundaiUsed
-                    },
-                    samsung: {
-                        limit: samsungLimit,
-                        used: samsungUsed,
-                        remaining: samsungLimit - samsungUsed
-                    }
-                }
-            };
-        } catch (error) {
-            console.error('❌ 기준 데이터 조회 실패:', error.message);
-            throw error;
-        }
-    }
-
+    
     /**
      * 일일 기록 추가 (선택)
      */
@@ -520,49 +392,7 @@ class GoogleSheetsService {
         }
     }
 
-    /**
-     * 오늘 잔고 계산 (기준날짜/금액 + 항목별 누적)
-     */
-    async calculateTodayBalance() {
-        try {
-            const data = await this.getBaseDataAndItems();
-            const { baseDate, baseAmount, items } = data;
-
-            const today = new Date();
-            console.log(`📊 ${baseDate.toLocaleDateString('ko-KR')}부터 ${today.toLocaleDateString('ko-KR')}까지 계산`);
-
-            let totalIncome = 0;
-            let totalExpense = 0;
-
-            items.forEach(item => {
-                const count = this._calculateOccurrences(item.frequency, baseDate, today);
-                 
-                if (count > 0) {
-                    const itemIncome = item.income * count;
-                    const itemExpense = item.expense * count;
-
-                    totalIncome += itemIncome;
-                    totalExpense += itemExpense;
-
-                    console.log(`  📌 ${item.itemName}: ${count}회 발생 (수입: +₩${itemIncome.toLocaleString()}, 지출: -₩${itemExpense.toLocaleString()})`);
-                }
-            });
-
-            const currentBalance = baseAmount + totalIncome - totalExpense;
-
-            console.log(`✅ 오늘 잔고 계산 완료:`);
-            console.log(`   기준금액: ₩${baseAmount.toLocaleString()}`);
-            console.log(`   총 수입: +₩${totalIncome.toLocaleString()}`);
-            console.log(`   총 지출: -₩${totalExpense.toLocaleString()}`);
-            console.log(`   현재 잔고: ₩${currentBalance.toLocaleString()}`);
-
-            return currentBalance;
-        } catch (error) {
-            console.error('❌ 오늘 잔고 계산 실패:', error.message);
-            throw error;
-        }
-    }
-
+     
     /**
      * 발생 주기에 따라 기준날짜부터 오늘까지 몇 번 발생했는지 계산
      */
@@ -682,87 +512,6 @@ class GoogleSheetsService {
     }
 
     /**
-     * 발생 주기에 따라 해당 월의 실제 날짜 배열 반환
-     * @param {string} frequency - "매주 수요일", "매월 5일" 등
-     * @param {number} month - 월 (1~12)
-     * @param {number} year - 년도
-     * @returns {Array<number>} - 날짜 배열 (예: [7, 14, 21, 28])
-     */
-    _getOccurrenceDates(frequency, month, year) {
-        let freq = frequency.trim();
-        const dates = [];
-
-        // 0. Excel 날짜 시리얼 번호 처리 (예: "46113")
-        if (/^\d{5,}$/.test(freq)) {
-            const serialNumber = parseInt(freq, 10);
-            // Excel 날짜를 Date 객체로 변환
-            const excelEpoch = new Date(1900, 0, 1);
-            const days = serialNumber - 2; // Excel 버그 보정
-            const date = new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
-
-            // 해당 날짜가 현재 조회 중인 월과 일치하면 반환
-            if (date.getMonth() + 1 === month && date.getFullYear() === year) {
-                dates.push(date.getDate());
-                return dates;
-            }
-            // 다른 월이면 빈 배열 반환
-            return dates;
-        }
-
-        freq = freq.toLowerCase();
-
-        // 1. 매주 X요일
-        if (freq.includes('매주')) {
-            const dayNames = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
-            const dayMatch = freq.match(/(월|화|수|목|금|토|일)/);
-
-            if (dayMatch) {
-                const targetDayOfWeek = dayNames[dayMatch[1]];
-                const monthStart = new Date(year, month - 1, 1);
-                const monthEnd = new Date(year, month, 0);
-
-                for (let d = new Date(monthStart); d <= monthEnd; d.setDate(d.getDate() + 1)) {
-                    if (d.getDay() === targetDayOfWeek) {
-                        dates.push(d.getDate());
-                    }
-                }
-            }
-        }
-        // 2. 매월 X일
-        else if (freq.includes('매월')) {
-            const dayMatch = freq.match(/(\d+)일/);
-            if (dayMatch) {
-                const day = parseInt(dayMatch[1], 10);
-                const monthEnd = new Date(year, month, 0).getDate();
-                if (day <= monthEnd) {
-                    dates.push(day);
-                }
-            }
-        }
-        // 3. 특정 월일 (예: "1월 24일")
-        else if (freq.match(/(\d+)월\s*(\d+)일/)) {
-            const specificDateMatch = freq.match(/(\d+)월\s*(\d+)일/);
-            if (specificDateMatch) {
-                const targetMonth = parseInt(specificDateMatch[1]);
-                const targetDay = parseInt(specificDateMatch[2]);
-                if (targetMonth === month) {
-                    dates.push(targetDay);
-                }
-            }
-        }
-        // 4. 숫자만 (예: "25") - 매월 25일로 해석
-        else if (freq.match(/^\d+$/)) {
-            const day = parseInt(freq, 10);
-            const monthEnd = new Date(year, month, 0).getDate();
-            if (day <= monthEnd) {
-                dates.push(day);
-            }
-        }
-
-        return dates;
-    }
-
-    /**
      * 날짜 값 파싱 헬퍼 (Excel 날짜 시리얼 번호, Date 객체, 텍스트 처리)
      */
     _parseDateValue(value) {
@@ -824,167 +573,6 @@ class GoogleSheetsService {
             return `${monthNum}월`;
         }
         return '미정';
-    }
-
-    /**
-     * 대출 상환 데이터 조회 (B3:AN15)
-     * B3~B15: 상환 날짜 (일자)
-     * C3~C15: 대출 기관/채권자
-     * D3~D15: 상환 방법/이자율
-     * E/F/G (1월), H/I/J (2월), ... AN (12월)
-     * E열: 월 상환액, F열: 대출 잔액, G열: 남은 상환 횟수
-     */
-    async getLoanData() {
-        try {
-            await this.initialize();
-
-            const sheet = this.doc.sheetsByIndex[0];
-            console.log('💳 대출 상환 데이터 조회 중...');
-
-            // B3:AN15 범위 로드 (행 확장: 10 → 15)
-            await sheet.loadCells('B3:AN15');
-
-            const loans = [];
-
-            // 3~15행 순회 (0-indexed: 2~14)
-            for (let row = 2; row < 15; row++) {
-                const dateCell = sheet.getCell(row, 1); // B열 = 상환일
-                const lenderCell = sheet.getCell(row, 2); // C열 = 대출기관
-                const methodCell = sheet.getCell(row, 3); // D열 = 상환방법/이자율
-
-                const paymentDay = this._parseDateValue(dateCell.value);
-                const lender = lenderCell.value ? String(lenderCell.value).trim() : '';
-                const method = methodCell.value ? String(methodCell.value).trim() : '';
-
-                // 대출 기관이 있으면 처리
-                if (lender) {
-                    const monthlyData = [];
-
-                    // 1~12월 데이터 수집
-                    for (let month = 1; month <= 12; month++) {
-                        const baseCol = 4 + (month - 1) * 3;
-                        const expenseCell = sheet.getCell(row, baseCol); // E열: 월 상환액 (지출)
-                        const balanceCell = sheet.getCell(row, baseCol + 1); // F열: 대출 잔액
-                        const monthsCell = sheet.getCell(row, baseCol + 2); // G열: 남은 상환 횟수
-
-                        const payment = Math.abs(this._parseNumber(expenseCell.value));
-                        const balance = this._parseNumber(balanceCell.value);
-                        const months = this._parseNumber(monthsCell.value);
-
-                        if (month === 1) {
-                            console.log(`  ${lender} - ${month}월: 상환액=₩${payment.toLocaleString()}, 잔액=₩${balance.toLocaleString()}, 잔여회차=${months}회`);
-                            console.log(`    셀값 원본 - E${row+1}(상환액): ${expenseCell.value}, F${row+1}(잔액): ${balanceCell.value}, G${row+1}(회차): ${monthsCell.value}`);
-                        }
-
-                        monthlyData.push({
-                            month: month,
-                            payment: payment, // 월 상환액
-                            remainingBalance: balance, // 잔여 대출 잔액
-                            remainingMonths: months // 남은 상환 횟수
-                        });
-                    }
-
-                    loans.push({
-                        paymentDay: paymentDay,
-                        lender: lender,
-                        method: method,
-                        monthlyData: monthlyData
-                    });
-
-                    console.log(`✅ ${lender}: 상환일 ${paymentDay}일, ${method}`);
-                }
-            }
-
-            console.log(`✅ 대출 ${loans.length}건 조회 완료`);
-            return loans;
-        } catch (error) {
-            console.error('❌ 대출 데이터 조회 실패:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * 월별 필요 저금량 조회 (특수 항목 기반)
-     * 16~17행: 여행 수익/지출
-     * 27~35행: 종합소득세 등 특수 항목
-     */
-    async getMonthlySavingsGoals() {
-        try {
-            await this.initialize();
-
-            const sheet = this.doc.sheetsByIndex[0];
-            console.log('💰 월별 저금 목표 조회 중...');
-
-            // B16:AN35 범위 로드
-            await sheet.loadCells('B16:AN35');
-
-            const savingsGoals = {};
-
-            // 1~12월 반복
-            for (let month = 1; month <= 12; month++) {
-                const monthCode = String(month).padStart(2, '0');
-                const baseCol = 4 + (month - 1) * 3;
-
-                let totalSpecialExpense = 0;
-                const items = [];
-
-                // 16~17행: 여행 수익/지출
-                for (let row = 15; row <= 16; row++) {
-                    const itemCell = sheet.getCell(row, 3); // D열: 항목명
-                    const expenseCell = sheet.getCell(row, baseCol); // E, H, K, ... (지출)
-
-                    const item = itemCell.value ? String(itemCell.value).trim() : '여행 수익 & 지출';
-                    const expense = Math.abs(this._parseNumber(expenseCell.value));
-
-                    if (expense > 0) {
-                        totalSpecialExpense += expense;
-                        items.push({
-                            category: '여행',
-                            item: item,
-                            amount: expense
-                        });
-                        console.log(`  ${month}월 - ${item}: ₩${expense.toLocaleString()}`);
-                    }
-                }
-
-                // 27~35행: 특수 항목 (종합소득세 등)
-                for (let row = 26; row < 35; row++) {
-                    const categoryCell = sheet.getCell(row, 2); // C열: 카테고리
-                    const itemCell = sheet.getCell(row, 3); // D열: 항목명
-                    const expenseCell = sheet.getCell(row, baseCol); // E, H, K, ... (지출)
-
-                    const category = categoryCell.value ? String(categoryCell.value).trim() : '';
-                    const item = itemCell.value ? String(itemCell.value).trim() : '';
-                    const expense = Math.abs(this._parseNumber(expenseCell.value));
-
-                    if (expense > 0 && item) {
-                        totalSpecialExpense += expense;
-                        items.push({
-                            category: category,
-                            item: item,
-                            amount: expense
-                        });
-                        console.log(`  ${month}월 - ${item}: ₩${expense.toLocaleString()}`);
-                    }
-                }
-
-                savingsGoals[monthCode] = {
-                    month: month,
-                    totalGoal: totalSpecialExpense,
-                    items: items,
-                    isMajorExpense: totalSpecialExpense >= 5000000 // 500만원 이상이면 주요 지출
-                };
-
-                if (totalSpecialExpense > 0) {
-                    console.log(`✅ ${month}월 필요 저금량: ₩${totalSpecialExpense.toLocaleString()} (${items.length}개 항목)`);
-                }
-            }
-
-            return savingsGoals;
-        } catch (error) {
-            console.error('❌ 월별 저금 목표 조회 실패:', error.message);
-            throw error;
-        }
     }
 
     /**

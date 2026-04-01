@@ -9,7 +9,7 @@ yarn.lock
 .env.*.local
 
 # Google Credentials (보안!)
-credentials.json
+credentials.json2
 *.json.backup
 
 # Logs
